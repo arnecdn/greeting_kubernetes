@@ -1,5 +1,9 @@
 # greeting_kubernetes
-The project includes resources for enabling the greeting sample apps infrastructure as Kafka, LGTM stack and OTEL Collector 
+The project includes resources for enabling the greeting sample apps infrastructure as
+Kafka
+Keda
+LGTM stack
+OTEL Collector 
 running in a Minikube Kubernetes environment.
 The resources can be installed with the following sample commands
 
@@ -15,6 +19,14 @@ kubectl apply -f kubernetes/kafka.yaml
 ```
 kubectl exec -it kafka-0 -- bash
 kafka-topics --create --topic greetings --partitions 10 --bootstrap-server kafka-0:9092
+```
+
+# KEDA
+For installation of Keda, use Helm with the following commandline parameters.
+Setting namespace=default because of some unsolved problem with accessing Kafka in different namespace
+There is no configuration, except for the ScaledObject installed when deploying the app greeting-processor-rust POD
+```
+helm install keda kedacore/keda --namespace default
 ```
 # Observability
 Observability is implemented based on OpenTelemetry.
