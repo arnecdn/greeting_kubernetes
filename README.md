@@ -13,12 +13,14 @@ The resources can be installed with the following sample commands
 In order to install the local Kafka node in KRaft mode, use the local installation config.
 
 ```
-kubectl apply -f kubernetes/kafka.yaml
+kubectl apply -f kafka.yaml
 ```
 ## Create greeting topic for producer and consumber
 ```
 kubectl exec -it kafka-0 -- bash
 kafka-topics --create --topic greetings --partitions 10 --bootstrap-server kafka-0:9092
+kafka-topics --alter --topic greetings --partitions 10 --bootstrap-server kafka-0:9092
+kafka-topics --delete --topic greetings --bootstrap-server kafka-0:9092
 ```
 
 # KEDA
@@ -26,6 +28,7 @@ For installation of Keda, use Helm with the following commandline parameters.
 Setting namespace=default because of some unsolved problem with accessing Kafka in different namespace
 There is no configuration, except for the ScaledObject installed when deploying the app greeting-processor-rust POD
 ```
+helm repo add kedacore https://kedacore.github.io/charts
 helm install keda kedacore/keda --namespace default
 ```
 # Observability
@@ -34,13 +37,13 @@ Further documentation to
 ## install LGTM stack
 
 ```
-helm install my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --version 2.1.0 --create-namespace
-helm upgrade my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --version 2.1.0
+
 helm uninstall my-lgtm-distributed grafana/lgtm-distributed -n lgtm-stack
 
+helm repo add grafana https://grafana.github.io/helm-charts
 
 helm upgrade my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --values kubernetes/helm-my-lgtm-stack-values.yaml
-helm install my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --version 2.1.0 --values kubernetes/helm-my-lgtm-stack-values.yaml
+helm install my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --version 2.1.0 --create-namespace --values helm-my-lgtm-stack-values.yaml
 helm -n lgtm-stack diff upgrade my-lgtm-distributed grafana/lgtm-distributed -f kubernetes/helm-my-lgtm-stack-values.yaml
 
 ```
@@ -53,11 +56,13 @@ https://opentelemetry.io/docs/collector/quick-start/
 
 install opentelemetry collector for logs, trace and metrics
 ```
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+
 helm install my-opentelemetry-collector open-telemetry/opentelemetry-collector \
    --set image.repository="otel/opentelemetry-collector-k8s" \
    --set mode=statefulset
    
-helm upgrade my-opentelemetry-collector open-telemetry/opentelemetry-collector --values kubernetes/helm-otel-collector-values.yaml 
+helm upgrade my-opentelemetry-collector open-telemetry/opentelemetry-collector --values helm-otel-collector-values.yaml 
 ```
 
 For adding tracing export from otel collector, the tempo-distributor must be configured for the otlp.
