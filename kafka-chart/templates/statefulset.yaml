@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: kafka-app
+  name: kafka
+spec:
+  serviceName: {{ .Values.service.name }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: kafka-app
+  template:
+    metadata:
+      labels:
+        app: kafka-app
+    spec:
+      containers:
+        - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          name: kafka
+          ports:
+            - containerPort: 29092
+            - containerPort: 9092
+            - containerPort: 9093
+          env:
+            - name: ORDINAL_NUMBER
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
+            - name: KAFKA_NODE_ID
+              value: "$(ORDINAL_NUMBER)"
+            - name: CLUSTER_ID
+              value: "{{ .Values.statefulset.clusterId }}"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: KAFKA_LISTENERS
+              value: "{{ .Values.statefulset.kafkaListeners }}"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "{{ .Values.statefulset.kafkaControllerQuorumVoters }}"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "{{ .Values.statefulset.kafkaAdvertisedListeners }}"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "{{ .Values.statefulset.kafkaOffsetsReplicationFactor }}"

@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-kafka-topic
+  annotations:
+    "helm.sh/hook": post-upgrade
+spec:
+  template:
+    spec:
+      containers:
+        - name: kafka-topic-creator
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Checking if topic '{{ .Values.kafkaTopic.name }}' exists..."
+              if kafka-topics --list --bootstrap-server {{ .Values.service.name }}:{{ index .Values.service.ports 1 "port" }} | grep -q "^{{ .Values.kafkaTopic.name }}$"; then
+                echo "Topic '{{ .Values.kafkaTopic.name }}' already exists. Skipping creation."
+              else
+                echo "Creating topic '{{ .Values.kafkaTopic.name }}'..."
+                kafka-topics --create --topic {{ .Values.kafkaTopic.name }} \
+                  --partitions {{ .Values.kafkaTopic.partitions }} \
+                  --replication-factor {{ .Values.kafkaTopic.replicationFactor }} \
+                  --bootstrap-server {{ .Values.service.name }}:{{ index .Values.service.ports 1 "port" }}
+              fi
+      restartPolicy: OnFailure

@@ -1,0 +1,27 @@
+replicaCount: 1
+image:
+  repository: docker.io/confluentinc/confluent-local
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  name: kafka-service
+  type: ClusterIP
+  ports:
+    - name: kafka-port1
+      port: 9092
+      targetPort: 9092
+    - name: kafka-port2
+      port: 9093
+      targetPort: 9093
+
+statefulset:
+  clusterId: "ODhCODhFMjEyNDZCNEI0ME"
+  kafkaListeners: "CONTROLLER://:29092,PLAINTEXT://:9092,PLAINTEXT_HOST://:9093"
+  kafkaAdvertisedListeners: "PLAINTEXT://localhost:9092,PLAINTEXT_HOST://kafka-service:9093"
+  kafkaOffsetsReplicationFactor: 1
+  kafkaControllerQuorumVoters: "0@kafka-0.kafka-service.default.svc.cluster.local:29092"
+kafkaTopic:
+    name: greetings
+    partitions: 1
+    replicationFactor: 1
