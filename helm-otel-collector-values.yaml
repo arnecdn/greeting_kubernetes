@@ -177,7 +177,6 @@ config:
     pipelines:
       logs:
         exporters:
-          - debug
           - loki
         processors:
           - memory_limiter
@@ -186,7 +185,6 @@ config:
           - otlp
       metrics:
         exporters:
-          - debug
           - prometheusremotewrite
         processors:
           - memory_limiter
@@ -196,7 +194,6 @@ config:
           - prometheus
       traces:
         exporters:
-          - debug
           - otlp
         processors:
           - memory_limiter
@@ -293,7 +290,7 @@ ports:
     servicePort: 4317
     hostPort: 4317
     protocol: TCP
-    # nodePort: 30317
+#    nodePort: 30317
     appProtocol: grpc
   otlp-http:
     enabled: true
