@@ -45,3 +45,7 @@ spec:
               value: "{{ .Values.statefulset.kafkaAdvertisedListeners }}"
             - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
               value: "{{ .Values.statefulset.kafkaOffsetsReplicationFactor }}"
+{{/*            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE*/}}
+{{/*              value: "{{ .Values.statefulset.kafkaAutoCreateTopicsEnable }}"*/}}
+{{/*            - name: KAFKA_DELETE_TOPIC_ENABLE*/}}
+{{/*              value: "{{ .Values.statefulset.kafkaDeleteTopicEnable }}"*/}}
