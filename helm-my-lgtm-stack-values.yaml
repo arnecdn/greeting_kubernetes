@@ -5277,7 +5277,7 @@ tempo:
     topologySpreadConstraints: |
       - maxSkew: 1
         topologyKey: topology.kubernetes.io/zone
-       q whenUnsatisfiable: ScheduleAnyway
+        whenUnsatisfiable: ScheduleAnyway
         labelSelector:
           matchLabels:
             {{- include "tempo.selectorLabels" (dict "ctx" . "component" "querier") | nindent 6 }}

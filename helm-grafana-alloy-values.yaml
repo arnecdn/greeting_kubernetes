@@ -43,24 +43,47 @@ alloy:
         
         output {
           logs = [otelcol.processor.batch.default.input]
+          traces = [otelcol.processor.batch.default.input]
         }
       }
 
-      otelcol.processor.batch "default" {
-        output {
-          logs = [otelcol.exporter.loki.default.input]
+        otelcol.processor.batch "default" {
+          output {
+            logs = [otelcol.exporter.loki.default.input]
+            traces = [otelcol.exporter.otlp.tempo.input]
+          }
         }
-      }
+        
+        otelcol.exporter.otlp "tempo"{
+          client {
+            endpoint = "my-lgtm-distributed-tempo-distributor.lgtm-stack.svc.cluster.local:4317"
+            tls {
+              insecure = true
+            }
+          }
+        }
+      
+        otelcol.exporter.loki "default" {
+          forward_to = [loki.write.local.receiver]
+        }
 
-      otelcol.exporter.loki "default" {
-        forward_to = [loki.write.local.receiver]
-      }
-      loki.write "local" {
-        endpoint {
-          url = "http://my-lgtm-distributed-loki-distributor.lgtm-stack.svc.cluster.local:3100/loki/api/v1/push"
+        loki.write "local" {
+          endpoint {
+            url = "http://my-lgtm-distributed-loki-distributor.lgtm-stack.svc.cluster.local:3100/loki/api/v1/push"
+          }
         }
-      }
-#  "http:///loki/api/v1/push"
+
+#
+#      otelcol.processor.batch "default" {
+#        output {
+#          logs = [otelcol.exporter.otlphttp.default.input]
+#        }
+#      }
+#      otelcol.exporter.otlphttp "default" {
+#        client {
+#          endpoint = "http://my-lgtm-distributed-loki-distributor.lgtm-stack.svc.cluster.local:3100/loki"
+#        }
+#      }
   clustering:
     # -- Deploy Alloy in a cluster to allow for load distribution.
     enabled: false
