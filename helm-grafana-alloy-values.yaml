@@ -44,34 +44,47 @@ alloy:
         output {
           logs = [otelcol.processor.batch.default.input]
           traces = [otelcol.processor.batch.default.input]
+          metrics = [otelcol.processor.batch.default.input]
         }
       }
 
-        otelcol.processor.batch "default" {
-          output {
-            logs = [otelcol.exporter.loki.default.input]
-            traces = [otelcol.exporter.otlp.tempo.input]
-          }
+      otelcol.processor.batch "default" {
+        output {
+          logs = [otelcol.exporter.loki.default.input]
+          traces = [otelcol.exporter.otlp.tempo.input]
+          metrics = [otelcol.exporter.prometheus.default.input]
         }
-        
-        otelcol.exporter.otlp "tempo"{
-          client {
-            endpoint = "my-lgtm-distributed-tempo-distributor.lgtm-stack.svc.cluster.local:4317"
-            tls {
-              insecure = true
-            }
-          }
-        }
-      
-        otelcol.exporter.loki "default" {
-          forward_to = [loki.write.local.receiver]
-        }
+      }
 
-        loki.write "local" {
-          endpoint {
-            url = "http://my-lgtm-distributed-loki-distributor.lgtm-stack.svc.cluster.local:3100/loki/api/v1/push"
+      otelcol.exporter.prometheus "default" {
+        forward_to = [prometheus.remote_write.default.receiver]
+      }
+  
+      prometheus.remote_write "default" {
+        endpoint {
+          url = "http://my-lgtm-distributed-mimir-distributor.lgtm-stack.svc.cluster.local:8080/api/v1/push"
+        }
+      }        
+      
+      otelcol.exporter.otlp "tempo"{
+        client {
+          endpoint = "my-lgtm-distributed-tempo-distributor.lgtm-stack.svc.cluster.local:4317"
+          tls {
+            insecure = true
           }
         }
+      }
+    
+
+      otelcol.exporter.loki "default" {
+        forward_to = [loki.write.local.receiver]
+      }
+
+      loki.write "local" {
+        endpoint {
+          url = "http://my-lgtm-distributed-loki-distributor.lgtm-stack.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
 
 #
 #      otelcol.processor.batch "default" {

@@ -42,14 +42,16 @@ grafana:
         url: http://{{ .Release.Name }}-mimir-nginx/prometheus
       - isDefault: false
         jsonData:
+          nodeGraph:
+            enabled: true
           lokiSearch:
             datasourceUid: loki
           serviceMap:
             datasourceUid: prom
           tracesToLogsV2:
             datasourceUid: loki
-          tracesToMetrics:
-            datasourceUid: prom
+#          tracesToMetrics:
+#            datasourceUid: prom
         name: Tempo
         type: tempo
         uid: tempo
@@ -4045,6 +4047,23 @@ mimir:
     serverCertPath: ""
     serverKeyPath: ""
 tempo:
+  metricsGenerator:
+    enabled: true
+    config:
+      processor:
+        service_graphs:
+          enabled: true
+          histogram_buckets: [ 0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8 ]
+          dimensions: [ "http.method", "http.status_code" ]
+          peer_attributes: [ "http.method", "http.status_code", "rpc.grpc.status_code", "rpc.system" ]
+        span_metrics:
+          enabled: true
+          histogram_buckets: [ 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10 ]
+          dimensions: [ "http.method", "http.status_code" ]
+      storage:
+        remote_write:
+          - url: "http://{{ .Release.Name }}-mimir-nginx/prometheus/api/v1/write"
+            send_exemplars: true
   adminApi:
     affinity: |
       podAntiAffinity:
