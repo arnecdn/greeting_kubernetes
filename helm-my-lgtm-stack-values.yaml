@@ -2436,7 +2436,7 @@ mimir:
       tolerations: []
   image:
     pullPolicy: IfNotPresent
-    repository: grafana/mimir
+    repository: docker.io/grafana/mimir
     tag: 2.12.0
   index-cache:
     affinity: {}
@@ -3817,7 +3817,7 @@ mimir:
     hostAliases: []
     image:
       pullPolicy: IfNotPresent
-      repository: grafana/rollout-operator
+      repository: docker.io/grafana/rollout-operator
       tag: ""
     imagePullSecrets: []
     minReadySeconds: 10

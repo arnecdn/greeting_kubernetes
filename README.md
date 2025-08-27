@@ -1,32 +1,30 @@
 # greeting_kubernetes
-The project includes plattform services running in a Kubernetes environment for the greeting application.
+// Kubernetes setup for greeting application infrastructure
+This project contains the Kubernetes setup for the greeting application infrastructure.
+
+The following components are included:
 Kafka
 Keda
 LGTM stack
-OTEL Collector 
-
+Grafana Alloy
 
 The resources are deployed with Helm from public and local Helm charts. 
 All resources have their own local configuration files. 
 
+## Kafka Helm Chart
+A local Helm chart is used to deploy a Kafka cluster in KRaft mode.
+The chart is located in the `kafka-chart` directory.
 
-# Kafka
-Kafkfa is used as an intermediate message broker for the greeting application in order to decouple the producer and consumer applications.
-The Kafka-cluster is installed in KRaft mode, which means that it runs as a single node without the need for ZooKeeper.
-
-## Installation
+### Installation
 In order to install the local Kafka node in KRaft mode, use the local installation config.
-
-
 ``` 
 helm install kafka-chart ./kafka-chart --namespace default
-helm uninstall kafka-chart --namespace default
-helm upgrade kafka-chart ./kafka-chart --namespace default
-```
 
-helm repo add confluentinc https://packages.confluent.io/helm
-helm repo update
-helm upgrade --install confluent-operator confluentinc/confluent-for-kubernetes --set kRaftEnabled=true
+helm upgrade kafka-chart ./kafka-chart --namespace default
+
+helm uninstall kafka-chart --namespace default
+
+```
 
 ## Managing greeting topic for producer and consumer
 ```
@@ -65,35 +63,6 @@ helm -n lgtm-stack diff upgrade my-lgtm-distributed grafana/lgtm-distributed -f 
 
 ```
 
-## Grafana Tempo
-Configuring Tempo.configmap-> replication_factor from 3 to one
-
-## Opentelemetry Collector
-https://opentelemetry.io/docs/collector/quick-start/
-
-install opentelemetry collector for logs, trace and metrics
-```
-helm repo add open-telemetry https://github.com/open-telemetry/opentelemetry-helm-charts
-helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
-
-helm install my-opentelemetry-collector open-telemetry/opentelemetry-collector \
-   --set mode=statefulset \
-   --set image.repository="ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s" \ 
-   --set command.name="otelcol-k8s"
-
-helm install my-opentelemetry-collector open-telemetry/opentelemetry-collector \
-   --set image.repository="ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s" \
-   --set mode=statefulset
-
-
-helm uninstall my-opentelemetry-collector
-
-helm upgrade my-opentelemetry-collector open-telemetry/opentelemetry-collector --values helm-otel-collector-values.yaml 
-
-helm install my-opentelemetry-collector https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-collector \
-   --set image.repository="otel/opentelemetry-collector-k8s" \
-   --set mode=statefulset
-```
 # Grafana Alloy
 Grafana Alloy is a Grafana distribution that includes Grafana, Loki, Tempo, and Prom
 etheus, providing a complete observability solution.
