@@ -70,6 +70,7 @@ It is designed to be easy to install and use, with a focus on providing a unifie
 
 ```
 helm install --namespace default my-grafana-alloy grafana/alloy --values helm-grafana-alloy-values.yaml
+helm install --namespace default grafana-alloy grafana/alloy --values helm-grafana-alloy-values.yaml
 helm uninstall --namespace default my-grafana-alloy
 helm upgrade --namespace default my-grafana-alloy grafana/alloy --values helm-grafana-alloy-values.yaml
 ```
@@ -77,3 +78,13 @@ helm upgrade --namespace default my-grafana-alloy grafana/alloy --values helm-gr
 
 For adding tracing export from otel collector, the tempo-distributor must be configured for the otlp.
 Added configuration for otlp grpc and http to the configmap of tempo-distributor
+
+
+##Jaeger
+Added a Jaeger installation 
+
+```
+helm repo add jaegertracing https://jaegertracing.github.io/helm-charts   
+helm install jaeger jaegertracing/jaeger --namespace jaeger --create-namespace
+helm upgrade jaeger jaegertracing/jaeger --namespace jaeger --create-namespace --values helm-jaeger-values.yaml
+```
