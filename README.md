@@ -88,3 +88,14 @@ helm upgrade --namespace default my-grafana-alloy grafana/alloy --values helm-gr
 For adding tracing export from otel collector, the tempo-distributor must be configured for the otlp.
 Added configuration for otlp grpc and http to the configmap of tempo-distributor
 
+### CNPG
+To install CloudNativePG in a non-cluster-wide mode, use the following Helm command:
+```
+helm upgrade --install cnpg \
+--namespace cnpg-system \
+--create-namespace \
+--set config.clusterWide=false \
+cnpg/cloudnative-pg
+
+helm uninstall cnpg --namespace cnpg-system
+```

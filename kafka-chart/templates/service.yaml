@@ -3,6 +3,9 @@ kind: Service
 metadata:
   labels:
     app: kafka-app
+    kubernetes.io/instance: kafka
+  annotations:
+    meta.helm.sh/release-name: kafka
   name: {{ .Values.service.name }}
 spec:
   ports:
