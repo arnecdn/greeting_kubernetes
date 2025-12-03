@@ -1,7 +1,7 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: postgres-greeting-service
+  name: postgres-greeting
   namespace: cnpg-system
 spec:
   instances: 1
