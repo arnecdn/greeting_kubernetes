@@ -19,6 +19,8 @@ spec:
       owner: greeting_rust
       secret:
         name: postgres-greeting-secret
+#      postInitSQL:
+#        - "GRANT CONNECT ON DATABASE greeting_rust TO greeting_rust;"
 
 ---
 apiVersion: postgresql.cnpg.io/v1
@@ -63,7 +65,7 @@ data:
 #    app: postgres-greeting
 #type: Opaque
 #data:
-#  POSTGRES_PASSWORD: Z3JlZXRpbmdfcnVzdAo=
+#  POSTGRES_PASSWORD: "Z3JlZXRpbmdfcnVzdA=="
 ---
 apiVersion: v1
 kind: Secret
@@ -71,8 +73,8 @@ metadata:
   name: postgres-greeting-secret
   namespace: cnpg-system
 data:
-  username: Z3JlZXRpbmdfcnVzdAo=
-  password: Z3JlZXRpbmdfcnVzdAo=
+  username: Z3JlZXRpbmdfcnVzdA==
+  password: Z3JlZXRpbmdfcnVzdA==
 type: kubernetes.io/basic-auth
 ---
 apiVersion: v1
