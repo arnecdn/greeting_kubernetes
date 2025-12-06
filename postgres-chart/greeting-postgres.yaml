@@ -41,9 +41,6 @@ metadata:
   labels:
     app: postgres-greeting
 data:
-#  POSTGRES_DB: "greeting_rust"
-#  POSTGRES_USER: "greeting_rust"
-#  POSTGRES_HOST: "cluster-example-rw"
   postgresql.conf: |
     shared_preload_libraries = 'pg_tracing'
 
@@ -54,18 +51,8 @@ data:
     # Send spans every 2 seconds to an otel collector
     pg_tracing.otel_endpoint = http://grafana-alloy:4318/v1/traces
     pg_tracing.otel_naptime = 2000
-
-#---
-#apiVersion: v1
-#kind: Secret
-#metadata:
-#  name: postgres-greeting-secret
-#  namespace: cnpg-system
-#  labels:
-#    app: postgres-greeting
-#type: Opaque
-#data:
-#  POSTGRES_PASSWORD: "Z3JlZXRpbmdfcnVzdA=="
+  pg_hba.conf: |
+    host all all 0.0.0.0/0 md5
 ---
 apiVersion: v1
 kind: Secret
@@ -84,7 +71,7 @@ metadata:
   namespace: cnpg-system
 spec:
   selector:
-    cnpg.io/cluster: cluster-example
+    cnpg.io/cluster: postgres-greeting
     role: primary
   ports:
     - port: 5432
