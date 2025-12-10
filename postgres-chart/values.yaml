@@ -1,0 +1,106 @@
+# Default values for postgres-chart
+# This is a YAML-formatted file.
+
+# Cluster configuration
+cluster:
+  name: postgres-greeting
+  namespace: cnpg-system
+  instances: 1
+
+  # Storage configuration
+  storage:
+    size: 1Gi
+    storageClass: ""  # Use default storage class
+
+  # Database configuration
+  database:
+    name: greeting_rust
+    owner: greeting_rust
+
+  # Image configuration
+  image:
+    catalog:
+      major: 16
+
+  # PostgreSQL parameters
+  postgresql:
+    parameters:
+      compute_query_id: "on"
+      # Uncomment below for pg_tracing extension
+      # pg_tracing:
+      #   max_span: "10000"
+      #   track: "all"
+      #   otel_endpoint: "http://grafana-alloy.default.svc.cluster.local:4318/v1/traces"
+      #   otel_naptime: "2000"
+
+  # Extensions (uncomment to enable)
+  extensions:
+    enabled: false
+    # - name: pg_tracing
+    #   ensure: present
+
+# Secret configuration for database credentials
+secret:
+  name: postgres-greeting-secret
+  username: greeting_rust  # Will be base64 encoded
+  password: greeting_rust  # Will be base64 encoded
+
+# ConfigMap for PostgreSQL configuration
+config:
+  enabled: true
+  name: postgres-greeting-config
+  postgresql_conf: |
+    shared_preload_libraries = 'pg_tracing'
+
+    compute_query_id = on
+    pg_tracing.max_span = 10000
+    pg_tracing.track = all
+
+    # Send spans every 2 seconds to an otel collector
+    pg_tracing.otel_endpoint = http://grafana-alloy.default.svc.cluster.local:4318/v1/traces
+    pg_tracing.otel_naptime = 2000
+
+  pg_hba_conf: |
+    host all all 0.0.0.0/0 md5
+
+# Service configuration
+service:
+  enabled: true
+  name: postgres-greeting-service
+  type: ClusterIP
+  port: 5432
+  targetPort: 5432
+
+# Image Catalog configuration
+imageCatalog:
+  enabled: true
+  name: postgresql
+  images:
+    - major: 16
+      repository: docker.io/arnecdn/greeting-postgres
+      tag: "0.16"
+
+# Monitoring and observability
+monitoring:
+  enabled: true
+  grafana_alloy:
+    endpoint: "http://grafana-alloy.default.svc.cluster.local:4318/v1/traces"
+    naptime: 2000
+
+# Resource limits and requests (optional)
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Additional labels and annotations
+labels: {}
+annotations: {}
+
+# Node selector and tolerations (optional)
+nodeSelector: {}
+tolerations: []
+affinity: {}

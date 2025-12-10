@@ -1,0 +1,20 @@
+{{- if .Values.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name | default (printf "%s-service" .Values.cluster.name) }}
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "postgres-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    cnpg.io/cluster: {{ .Values.cluster.name }}
+    role: primary
+  type: {{ .Values.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: postgres
+{{- end }}
+

@@ -1,0 +1,16 @@
+{{- if .Values.imageCatalog.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: ImageCatalog
+metadata:
+  name: {{ .Values.imageCatalog.name }}
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "postgres-chart.labels" . | nindent 4 }}
+spec:
+  images:
+    {{- range .Values.imageCatalog.images }}
+    - major: {{ .major }}
+      image: {{ .repository }}:{{ .tag }}
+    {{- end }}
+{{- end }}
+

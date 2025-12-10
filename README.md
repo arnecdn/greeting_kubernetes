@@ -99,3 +99,59 @@ cnpg/cloudnative-pg
 
 helm uninstall cnpg --namespace cnpg-system
 ```
+
+To install a CloudNativePG PostgreSQL cluster using the local Helm chart configuration, use the following command:
+```
+helm upgrade --install greeting-postgres \
+--namespace cnpg-database \
+--create-namespace \
+--values helm-cnpg-postgres-values.yaml \
+cnpg/cluster
+
+helm uninstall cnpg --namespace cnpg-database
+```
+
+```
+helm install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
+helm uninstall postgres-greeting --namespace cnpg-system
+```
+
+## Complete Uninstall Commands
+
+To uninstall all the Helm charts and clean up the deployment, use the following commands in reverse order of installation:
+
+### Uninstall Grafana Alloy
+```bash
+helm uninstall grafana-alloy --namespace default
+```
+
+### Uninstall LGTM Stack
+```bash
+helm uninstall my-lgtm-distributed --namespace lgtm-stack
+```
+
+### Uninstall PostgreSQL Cluster
+```bash
+# Uninstall the local postgres-chart
+helm uninstall postgres-greeting --namespace cnpg-system
+
+# Uninstall CNPG operator
+helm uninstall cnpg --namespace cnpg-system
+```
+
+### Uninstall KEDA
+```bash
+helm uninstall keda --namespace default
+```
+
+### Uninstall Kafka
+```bash
+helm uninstall kafka-chart --namespace default
+```
+
+### Clean up Namespaces (optional)
+```bash
+kubectl delete namespace lgtm-stack
+kubectl delete namespace cnpg-system
+kubectl delete namespace cnpg-database
+```

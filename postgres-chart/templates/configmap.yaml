@@ -1,0 +1,16 @@
+{{- if .Values.config.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.config.name | default (printf "%s-config" .Values.cluster.name) }}
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "postgres-chart.labels" . | nindent 4 }}
+    app: {{ .Values.cluster.name }}
+data:
+  postgresql.conf: |
+{{ .Values.config.postgresql_conf | indent 4 }}
+  pg_hba.conf: |
+{{ .Values.config.pg_hba_conf | indent 4 }}
+{{- end }}
+

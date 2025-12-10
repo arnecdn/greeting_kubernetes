@@ -19,6 +19,18 @@ spec:
       owner: greeting_rust
       secret:
         name: postgres-greeting-secret
+#  extensions:
+#    - name: pg_tracing
+#      ensure: present
+  postgresql:
+
+    parameters:
+      compute_query_id: "on"
+#      pg_tracing:
+#        max_span: "10000"
+#        track: "all"
+#        otel_endpoint: "http://grafana-alloy.default.svc.cluster.local:4318/v1/traces"
+#        otel_naptime: "2000"
 #      postInitSQL:
 #        - "GRANT CONNECT ON DATABASE greeting_rust TO greeting_rust;"
 
@@ -49,7 +61,7 @@ data:
     pg_tracing.track = all
 
     # Send spans every 2 seconds to an otel collector
-    pg_tracing.otel_endpoint = http://grafana-alloy:4318/v1/traces
+    pg_tracing.otel_endpoint = http://grafana-alloy.default.svc.cluster.local:4318/v1/traces
     pg_tracing.otel_naptime = 2000
   pg_hba.conf: |
     host all all 0.0.0.0/0 md5

@@ -1,0 +1,67 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "postgres-chart.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  instances: {{ .Values.cluster.instances }}
+
+  storage:
+    size: {{ .Values.cluster.storage.size }}
+    {{- if .Values.cluster.storage.storageClass }}
+    storageClass: {{ .Values.cluster.storage.storageClass }}
+    {{- end }}
+
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ImageCatalog
+    name: {{ .Values.imageCatalog.name }}
+    major: {{ .Values.cluster.image.catalog.major }}
+
+  bootstrap:
+    initdb:
+      database: {{ .Values.cluster.database.name }}
+      owner: {{ .Values.cluster.database.owner }}
+      secret:
+        name: {{ .Values.secret.name | default (printf "%s-secret" .Values.cluster.name) }}
+
+  {{- if .Values.cluster.extensions.enabled }}
+  extensions:
+    {{- range .Values.cluster.extensions }}
+    - name: {{ .name }}
+      ensure: {{ .ensure | default "present" }}
+    {{- end }}
+  {{- end }}
+
+  postgresql:
+    parameters:
+      {{- range $key, $value := .Values.cluster.postgresql.parameters }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  {{- if .Values.resources }}
+  resources:
+    {{- toYaml .Values.resources | nindent 4 }}
+  {{- end }}
+
+  {{- if .Values.nodeSelector }}
+  nodeSelector:
+    {{- toYaml .Values.nodeSelector | nindent 4 }}
+  {{- end }}
+
+  {{- if .Values.tolerations }}
+  tolerations:
+    {{- toYaml .Values.tolerations | nindent 4 }}
+  {{- end }}
+
+  {{- if .Values.affinity }}
+  affinity:
+    {{- toYaml .Values.affinity | nindent 4 }}
+  {{- end }}
+
