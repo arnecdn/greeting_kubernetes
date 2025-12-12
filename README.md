@@ -100,20 +100,28 @@ cnpg/cloudnative-pg
 helm uninstall cnpg --namespace cnpg-system
 ```
 
-To install a CloudNativePG PostgreSQL cluster using the local Helm chart configuration, use the following command:
-```
-helm upgrade --install greeting-postgres \
---namespace cnpg-database \
---create-namespace \
---values helm-cnpg-postgres-values.yaml \
-cnpg/cluster
-
-helm uninstall cnpg --namespace cnpg-database
-```
+### PostgreSQL Cluster
+To install a PostgreSQL cluster using the local Helm chart, use the following command:
 
 ```
 helm install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
 helm uninstall postgres-greeting --namespace cnpg-system
+```
+
+# Minio
+
+To install MinIO using Helm, you can use the following command:
+```
+helm upgrade --install greeting-minio minio/minio \
+  --namespace cnpg-system \
+  --set resources.requests.memory=512Mi \
+  --set replicas=1 \
+  --set persistence.enabled=false \
+  --set mode=standalone \
+  --set rootUser=rootuser,rootPassword=rootpass123
+
+
+helm uninstall greeting-minio
 ```
 
 ## Complete Uninstall Commands
