@@ -91,11 +91,13 @@ Added configuration for otlp grpc and http to the configmap of tempo-distributor
 ### CNPG
 To install CloudNativePG in a non-cluster-wide mode, use the following Helm command:
 ```
-helm upgrade --install cnpg \
+hhelm upgrade --install cnpg \
 --namespace cnpg-system \
 --create-namespace \
 --set config.clusterWide=false \
+--version 0.27.0 \
 cnpg/cloudnative-pg
+
 
 helm uninstall cnpg --namespace cnpg-system
 ```
@@ -104,7 +106,8 @@ helm uninstall cnpg --namespace cnpg-system
 To install a PostgreSQL cluster using the local Helm chart, use the following command:
 
 ```
-helm install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
+helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
+
 helm uninstall postgres-greeting --namespace cnpg-system
 ```
 

@@ -1,8 +1,6 @@
-TAG ?= 0.16
+TAG ?= 0.17
 APP_NAME = greeting-postgres
 IMAGE_NAME = arnecdn/$(APP_NAME)
-
-
 
 .PHONY: install all build_image deploy clean validate-tag
 

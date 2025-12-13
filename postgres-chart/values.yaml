@@ -78,7 +78,30 @@ imageCatalog:
   images:
     - major: 16
       repository: docker.io/arnecdn/greeting-postgres
-      tag: "0.16"
+      tag: "0.17"
+
+# Backup configuration
+backup:
+  enabled: true
+  retentionPolicy: "1d"
+  schedule: "45 22 * * *"  # Daily at 2 AM
+  minioCredentials:
+    accessKey: "rootuser"
+    secretKey: "rootpass123"
+  barmanObjectStore:
+    destinationPath: "s3://postgres-backup"
+    endpointURL: "http://greeting-minio.cnpg-system.svc.cluster.local:9000"
+    wal:
+      maxParallel: 2
+    data:
+      compression: "gzip"
+  s3Credentials:
+    accessKeyId:
+      name: "postgres-greeting-minio"
+      key: "ACCESS_KEY_ID"
+    secretAccessKey:
+      name: "postgres-greeting-minio"
+      key: "SECRET_ACCESS_KEY"
 
 # Monitoring and observability
 monitoring:
