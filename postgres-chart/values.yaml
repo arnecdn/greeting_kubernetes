@@ -78,13 +78,13 @@ imageCatalog:
   images:
     - major: 16
       repository: docker.io/arnecdn/greeting-postgres
-      tag: "0.17"
+      tag: "0.27"
 
 # Backup configuration
 backup:
   enabled: true
   retentionPolicy: "1d"
-  schedule: "45 22 * * *"  # Daily at 2 AM
+  schedule: "00 17 * * *"  # Daily at 17 PM
   minioCredentials:
     accessKey: "rootuser"
     secretKey: "rootpass123"
