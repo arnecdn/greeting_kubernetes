@@ -26,15 +26,14 @@ cluster:
   postgresql:
     shared_preload_libraries:
       - pg_tracing
-      -
     parameters:
       compute_query_id: "on"
       #Trace configuration
-      pg_tracing.max_span : 10000
-      pg_tracing.track : "all"
+      pg_tracing.max_span: "10000"
+      pg_tracing.track: "all"
       # Send spans every 2 seconds to an otel collector
-      pg_tracing.otel_endpoint : "http://grafana-alloy:4318/v1/traces"
-      pg_tracing.otel_naptime : "2000"
+      pg_tracing.otel_endpoint: "http://grafana-alloy.default.svc.cluster.local:4318/v1/traces"
+      pg_tracing.otel_naptime: "2000"
 
 # Secret configuration for database credentials
 secret:
@@ -70,10 +69,14 @@ imageCatalog:
 backup:
   enabled: true
   retentionPolicy: "1d"
-  schedule: "00 17 * * *"  # Daily at 17 PM
-  minioCredentials:
-    accessKey: "rootuser"
-    secretKey: "rootpass123"
+  schedule: "00 17 * * *"
+  s3Credentials:
+    accessKeyId:
+      name: "minio-credentials"
+      key: "ACCESS_KEY_ID"
+    secretAccessKey:
+      name: "minio-credentials"
+      key: "SECRET_ACCESS_KEY"
   barmanObjectStore:
     destinationPath: "s3://postgres-backup"
     endpointURL: "http://greeting-minio.cnpg-system.svc.cluster.local:9000"
@@ -81,13 +84,6 @@ backup:
       maxParallel: 2
     data:
       compression: "gzip"
-  s3Credentials:
-    accessKeyId:
-      name: "postgres-greeting-minio"
-      key: "ACCESS_KEY_ID"
-    secretAccessKey:
-      name: "postgres-greeting-minio"
-      key: "SECRET_ACCESS_KEY"
 
 # Monitoring and observability
 monitoring:
