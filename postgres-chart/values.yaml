@@ -24,20 +24,17 @@ cluster:
 
   # PostgreSQL parameters
   postgresql:
+    shared_preload_libraries:
+      - pg_tracing
+      -
     parameters:
       compute_query_id: "on"
-      # Uncomment below for pg_tracing extension
-      # pg_tracing:
-      #   max_span: "10000"
-      #   track: "all"
-      #   otel_endpoint: "http://grafana-alloy.default.svc.cluster.local:4318/v1/traces"
-      #   otel_naptime: "2000"
-
-  # Extensions (uncomment to enable)
-  extensions:
-    enabled: false
-    # - name: pg_tracing
-    #   ensure: present
+      #Trace configuration
+      pg_tracing.max_span : 10000
+      pg_tracing.track : "all"
+      # Send spans every 2 seconds to an otel collector
+      pg_tracing.otel_endpoint : "http://grafana-alloy:4318/v1/traces"
+      pg_tracing.otel_naptime : "2000"
 
 # Secret configuration for database credentials
 secret:
@@ -49,17 +46,6 @@ secret:
 config:
   enabled: true
   name: postgres-greeting-config
-  postgresql_conf: |
-    shared_preload_libraries = 'pg_tracing'
-
-    compute_query_id = on
-    pg_tracing.max_span = 10000
-    pg_tracing.track = all
-
-    # Send spans every 2 seconds to an otel collector
-    pg_tracing.otel_endpoint = http://grafana-alloy.default.svc.cluster.local:4318/v1/traces
-    pg_tracing.otel_naptime = 2000
-
   pg_hba_conf: |
     host all all 0.0.0.0/0 md5
 

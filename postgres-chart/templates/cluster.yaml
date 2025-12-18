@@ -11,7 +11,6 @@ metadata:
   {{- end }}
 spec:
   instances: {{ .Values.cluster.instances }}
-
   storage:
     size: {{ .Values.cluster.storage.size }}
     {{- if .Values.cluster.storage.storageClass }}
@@ -31,25 +30,23 @@ spec:
       secret:
         name: {{ .Values.secret.name | default (printf "%s-secret" .Values.cluster.name) }}
 
-  {{- if .Values.cluster.extensions.enabled }}
-  extensions:
-    {{- range .Values.cluster.extensions }}
-    - name: {{ .name }}
-      ensure: {{ .ensure | default "present" }}
-    {{- end }}
-  {{- end }}
+{{/*  {{- if .Values.cluster.extensions.enabled }}*/}}
+{{/*  extensions:*/}}
+{{/*    {{- range .Values.cluster.extensions }}*/}}
+{{/*    - name: {{ .name }}*/}}
+{{/*      ensure: {{ .ensure | default "present" }}*/}}
+{{/*    {{- end }}*/}}
+{{/*  {{- end }}*/}}
 
   postgresql:
+    shared_preload_libraries:
+      {{- range .Values.cluster.postgresql.shared_preload_libraries }}
+      - {{ . }}
+      {{- end }}
     parameters:
       {{- range $key, $value := .Values.cluster.postgresql.parameters }}
       {{ $key }}: {{ $value | quote }}
       {{- end }}
-
-
-
-
-
-
 
   {{- if .Values.resources }}
   resources:
@@ -91,4 +88,3 @@ spec:
       data:
         compression: "{{ .Values.backup.barmanObjectStore.data.compression }}"
 {{- end }}
-

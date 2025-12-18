@@ -8,8 +8,6 @@ metadata:
     {{- include "postgres-chart.labels" . | nindent 4 }}
     app: {{ .Values.cluster.name }}
 data:
-  postgresql.conf: |
-{{ .Values.config.postgresql_conf | indent 4 }}
   pg_hba.conf: |
 {{ .Values.config.pg_hba_conf | indent 4 }}
 {{- end }}
