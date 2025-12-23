@@ -68,23 +68,29 @@ spec:
     {{- toYaml .Values.affinity | nindent 4 }}
   {{- end }}
 
-{{- if .Values.backup.enabled }}
-  backup:
-    retentionPolicy: "{{ .Values.backup.retentionPolicy }}"
-    barmanObjectStore:
-      destinationPath: "{{ .Values.backup.barmanObjectStore.destinationPath }}"
-      {{- if .Values.backup.barmanObjectStore.endpointURL }}
-      endpointURL: "{{ .Values.backup.barmanObjectStore.endpointURL }}"
-      {{- end }}
-      s3Credentials:
-        accessKeyId:
-          name: "{{ .Values.backup.s3Credentials.accessKeyId.name }}"
-          key: "ACCESS_KEY_ID"
-        secretAccessKey:
-          name: "{{ .Values.backup.s3Credentials.secretAccessKey.name }}"
-          key: "SECRET_ACCESS_KEY"
-      wal:
-        maxParallel: {{ .Values.backup.barmanObjectStore.wal.maxParallel }}
-      data:
-        compression: "{{ .Values.backup.barmanObjectStore.data.compression }}"
-{{- end }}
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: minio-backup-store
+
+{{/*{{- if .Values.backup.enabled }}*/}}
+{{/*  backup:*/}}
+{{/*    retentionPolicy: "{{ .Values.backup.retentionPolicy }}"*/}}
+{{/*    barmanObjectStore:*/}}
+{{/*      destinationPath: "{{ .Values.backup.barmanObjectStore.destinationPath }}"*/}}
+{{/*      {{- if .Values.backup.barmanObjectStore.endpointURL }}*/}}
+{{/*      endpointURL: "{{ .Values.backup.barmanObjectStore.endpointURL }}"*/}}
+{{/*      {{- end }}*/}}
+{{/*      s3Credentials:*/}}
+{{/*        accessKeyId:*/}}
+{{/*          name: "{{ .Values.backup.s3Credentials.accessKeyId.name }}"*/}}
+{{/*          key: "ACCESS_KEY_ID"*/}}
+{{/*        secretAccessKey:*/}}
+{{/*          name: "{{ .Values.backup.s3Credentials.secretAccessKey.name }}"*/}}
+{{/*          key: "SECRET_ACCESS_KEY"*/}}
+{{/*      wal:*/}}
+{{/*        maxParallel: {{ .Values.backup.barmanObjectStore.wal.maxParallel }}*/}}
+{{/*      data:*/}}
+{{/*        compression: "{{ .Values.backup.barmanObjectStore.data.compression }}"*/}}
+{{/*{{- end }}*/}}

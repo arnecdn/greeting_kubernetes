@@ -97,8 +97,9 @@ hhelm upgrade --install cnpg \
 --set config.clusterWide=false \
 --version 0.27.0 \
 cnpg/cloudnative-pg
-
-
+```
+Uninstall CloudNativePG operator with the following command:
+```
 helm uninstall cnpg --namespace cnpg-system
 ```
 
@@ -107,7 +108,9 @@ To install a PostgreSQL cluster using the local Helm chart, use the following co
 
 ```
 helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
-
+```
+Uninstall the PostgreSQL cluster with the following command:
+```
 helm uninstall postgres-greeting --namespace cnpg-system
 ```
 
@@ -122,9 +125,24 @@ helm upgrade --install greeting-minio minio/minio \
   --set persistence.enabled=false \
   --set mode=standalone \
   --set rootUser=rootuser,rootPassword=rootpass123
-
-
+```
+Uninstall MinIO with the following command:
+```
 helm uninstall greeting-minio
+```
+
+### Barman Cloud Plugin
+To install the Barman Cloud plugin for CloudNativePG, use the following Helm command:
+The Barman Cloud plugin depends on Cert-Manager being installed in the cluster.
+Using cert-manager.io Helm chart to install cert-manager:
+```
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace
+```
+Then install the Barman Cloud plugin:
+```
+helm install plugin-barman-cloud cnpg/plugin-barman-cloud --namespace cnpg-system
+
+helm uninstall plugin-barman-cloud --namespace cnpg-system
 ```
 
 ## Complete Uninstall Commands

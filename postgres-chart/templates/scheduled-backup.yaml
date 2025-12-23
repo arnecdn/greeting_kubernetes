@@ -13,9 +13,9 @@ metadata:
   {{- end }}
 spec:
   schedule: {{ .Values.backup.schedule | quote }}
+
   backupOwnerReference: self
   cluster:
     name: {{ .Values.cluster.name }}
 {{- end }}
 {{- end }}
-

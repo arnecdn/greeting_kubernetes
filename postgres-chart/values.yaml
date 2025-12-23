@@ -66,24 +66,20 @@ imageCatalog:
       tag: "0.27"
 
 # Backup configuration
+#backup:
+
 backup:
   enabled: true
-  retentionPolicy: "1d"
-  schedule: "00 17 * * *"
-  s3Credentials:
-    accessKeyId:
-      name: "minio-credentials"
-      key: "ACCESS_KEY_ID"
-    secretAccessKey:
-      name: "minio-credentials"
-      key: "SECRET_ACCESS_KEY"
-  barmanObjectStore:
-    destinationPath: "s3://postgres-backup"
-    endpointURL: "http://greeting-minio.cnpg-system.svc.cluster.local:9000"
-    wal:
-      maxParallel: 2
-    data:
-      compression: "gzip"
+  objectStoreName: minio-backup-store
+  destinationPath: "s3://barman-cloud-greeting-backup"
+  endpointURL: http://greeting-minio.cnpg-system.svc.cluster.local:9000
+  s3SecretName: minio-credentials
+  s3AccessKeyIdKey: ACCESS_KEY_ID
+  s3AccessSecretKeyKey: ACCESS_SECRET_KEY
+  walCompression: gzip
+  walMaxParallel: 2
+
+
 
 # Monitoring and observability
 monitoring:
