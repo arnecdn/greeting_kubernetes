@@ -70,6 +70,7 @@ imageCatalog:
 
 backup:
   enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
   objectStoreName: minio-backup-store
   destinationPath: "s3://barman-cloud-greeting-backup"
   endpointURL: http://greeting-minio.cnpg-system.svc.cluster.local:9000
