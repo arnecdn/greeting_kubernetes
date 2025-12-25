@@ -3,9 +3,11 @@ kind: ObjectStore
 metadata:
   name: {{ .Values.backup.objectStoreName | default "minio-store" }}
 spec:
+  retentionPolicy: {{ .Values.backup.retentionPolicy | quote }}
   configuration:
     destinationPath: {{ .Values.backup.destinationPath | quote }}
     endpointURL: {{ .Values.backup.endpointURL | quote }}
+
     s3Credentials:
       accessKeyId:
         name: {{ .Values.backup.s3SecretName | quote }}
