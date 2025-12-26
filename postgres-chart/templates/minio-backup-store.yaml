@@ -1,7 +1,8 @@
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:
-  name: {{ .Values.backup.objectStoreName | default "minio-store" }}
+  name: {{ .Values.backup.objectStoreName }}
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
 spec:
   retentionPolicy: {{ .Values.backup.retentionPolicy | quote }}
   configuration:
@@ -18,3 +19,7 @@ spec:
     wal:
       compression: {{ .Values.backup.walCompression | default "gzip" | quote }}
       maxParallel: {{ .Values.backup.walMaxParallel | default 2 }}
+    data:
+      compression: gzip
+      immediateCheckpoint: false
+      jobs: 2
