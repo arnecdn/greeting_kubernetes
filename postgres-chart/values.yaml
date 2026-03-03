@@ -9,7 +9,7 @@ cluster:
 
   # Storage configuration
   storage:
-    size: 1Gi
+    size: 8Gi
     storageClass: ""  # Use default storage class
 
   # Database configuration
@@ -27,6 +27,8 @@ cluster:
     shared_preload_libraries:
       - pg_tracing
     parameters:
+      shared_buffers: "128MB"
+      # Enable query ID computation for better tracing
       compute_query_id: "on"
       #Trace configuration
       pg_tracing.max_span: "10000"
