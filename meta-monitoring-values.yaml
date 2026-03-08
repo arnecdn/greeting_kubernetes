@@ -30,6 +30,21 @@ local:
     enabled: true  # This should be set to true if any of the previous is enabled
 grafana:
   version: 11.6.1
+  # Grafana admin credentials
+  # The meta-monitoring chart does not natively inject admin credentials.
+  # After install/upgrade, create the secret and patch the deployment:
+  #
+  #   kubectl create secret generic grafana-admin -n meta \
+  #     --from-literal=admin-user=admin \
+  #     --from-literal=admin-password=<your-password>
+  #
+  #   kubectl patch deployment grafana -n meta --type='json' -p='[
+  #     {"op": "add", "path": "/spec/template/spec/containers/0/env", "value": [
+  #       {"name": "GF_SECURITY_ADMIN_USER", "valueFrom": {"secretKeyRef": {"name": "grafana-admin", "key": "admin-user"}}},
+  #       {"name": "GF_SECURITY_ADMIN_PASSWORD", "valueFrom": {"secretKeyRef": {"name": "grafana-admin", "key": "admin-password"}}}
+  #     ]}
+  #   ]'
+  #
   # Gateway ingress configuration
   ingress:
     # -- Specifies whether an ingress for the gateway should be created
@@ -342,24 +357,58 @@ loki:
         installOperator: false
     lokiCanary:
       enabled: false
+  # Scale down Loki for minikube
   write:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
   read:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
   backend:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
+  chunksCache:
+    allocatedMemory: 512
+    resources:
+      requests:
+        cpu: 50m
+      limits: {}
+  resultsCache:
+    allocatedMemory: 256
+    resources:
+      requests:
+        cpu: 50m
+      limits: {}
 alloy:
   alloy:
     clustering:
@@ -370,10 +419,10 @@ alloy:
       key: 'config.river'
     resources:
       requests:
-        cpu: '1000m'
-        memory: '600Mi'
+        cpu: '100m'
+        memory: '256Mi'
       limits:
-        memory: '4Gi'
+        memory: '1Gi'
     extraPorts:
       - name: "otel"
         port: 4317
@@ -385,12 +434,9 @@ alloy:
         protocol: "TCP"
   controller:
     type: "statefulset"
+    replicas: 1
     autoscaling:
-      enabled: true
-      minReplicas: 3
-      maxReplicas: 30
-      targetMemoryUtilizationPercentage: 90
-      targetCPUUtilizationPercentage: 90
+      enabled: false
 mimir-distributed:
   minio:
     enabled: false
@@ -421,6 +467,130 @@ mimir-distributed:
             insecure: true
       limits:
         compactor_blocks_retention_period: 30d
+  # Scale down Mimir for minikube
+  alertmanager:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  compactor:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  distributor:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  ingester:
+    zoneAwareReplication:
+      enabled: false
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+  overrides_exporter:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+  querier:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  query_frontend:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  query_scheduler:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+  ruler:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  store_gateway:
+    zoneAwareReplication:
+      enabled: false
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  rollout_operator:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+  nginx:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+  chunks-cache:
+    replicas: 1
+    allocatedMemory: 512
+    maxItemMemory: 256
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+  index-cache:
+    replicas: 0
+  metadata-cache:
+    replicas: 0
+  results-cache:
+    replicas: 1
+    allocatedMemory: 256
+    maxItemMemory: 128
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
 tempo-distributed:
   tempo:
     structuredConfig:
@@ -433,36 +603,80 @@ tempo-distributed:
             access_key: "${rootUser}"
             secret_key: "${rootPassword}"
             insecure: true
+  # Scale down Tempo for minikube
   distributor:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
   ingester:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
   compactor:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
   querier:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
   queryFrontend:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
     extraArgs:
       - "-config.expand-env=true"
     extraEnvFrom:
       - secretRef:
           name: "minio"
+  memcached:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
   traces:
     otlp:
       http:

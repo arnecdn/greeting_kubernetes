@@ -71,14 +71,17 @@ helm upgrade my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed
 
 helm -n lgtm-stack diff upgrade my-lgtm-distributed grafana/lgtm-distributed -f kubernetes/helm-my-lgtm-stack-values.yaml
 
-kubectl create secret generic minio -n meta --from-literal="rootUser='minio123'"  --from-literal="rootPassword='minio123'"
-helm install meta-monitoring grafana/meta-monitoring -n meta --create-namespace -f meta-monitoring-values.yaml
+kubectl create namespace meta
+kubectl create secret generic minio -n meta --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
+helm install meta-monitoring grafana/meta-monitoring -n meta -f meta-monitoring-values.yaml
+helm upgrade meta-monitoring grafana/meta-monitoring -n meta -f meta-monitoring-values.yaml
+helm uninstall meta-monitoring -n meta
 ```
 
 As the lgtm/distributed is obsolete, the meta-monitoring chart is used to deploy the LGTM stack components separately.
 Following commands are used to deploy the meta-monitoring chart with the configuration for the LGTM stack components.
 ```
-kubectl create secret generic minio -n meta --from-literal="username='minio123'"  --from-literal="password='minio123'"
+kubectl create secret generic minio -n meta --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
 helm install meta-monitoring grafana/meta-monitoring -n meta --create-namespace -f meta-monitoring-values.yaml
 ```
 
