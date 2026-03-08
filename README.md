@@ -104,7 +104,7 @@ Added configuration for otlp grpc and http to the configmap of tempo-distributor
 ### CNPG
 To install CloudNativePG in a non-cluster-wide mode, use the following Helm command:
 ```
-hhelm upgrade --install cnpg \
+helm upgrade --install cnpg \
 --namespace cnpg-system \
 --create-namespace \
 --set config.clusterWide=false \
@@ -127,6 +127,31 @@ Uninstall the PostgreSQL cluster with the following command:
 helm uninstall postgres-greeting --namespace cnpg-system
 ```
 
+### Barman Cloud Plugin
+To install the Barman Cloud plugin for CloudNativePG, use the following Helm command:
+The Barman Cloud plugin depends on Cert-Manager being installed in the cluster.
+Using cert-manager.io Helm chart to install cert-manager:
+```
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
+```
+Uninstall cert-manager with the following command:
+```
+helm uninstall cert-manager --namespace cert-manager
+```
+
+Wait for cert-manager webhook to be ready before installing the Barman Cloud plugin:
+```
+kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=120s
+```
+
+Then install the Barman Cloud plugin:
+```
+helm upgrade --install plugin-barman-cloud cnpg/plugin-barman-cloud --namespace cnpg-system
+
+helm uninstall plugin-barman-cloud --namespace cnpg-system
+```
+
 # Minio
 
 To install MinIO using Helm, you can use the following command:
@@ -142,20 +167,6 @@ helm upgrade --install greeting-minio minio/minio \
 Uninstall MinIO with the following command:
 ```
 helm uninstall greeting-minio
-```
-
-### Barman Cloud Plugin
-To install the Barman Cloud plugin for CloudNativePG, use the following Helm command:
-The Barman Cloud plugin depends on Cert-Manager being installed in the cluster.
-Using cert-manager.io Helm chart to install cert-manager:
-```
-helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace
-```
-Then install the Barman Cloud plugin:
-```
-helm install plugin-barman-cloud cnpg/plugin-barman-cloud --namespace cnpg-system
-
-helm uninstall plugin-barman-cloud --namespace cnpg-system
 ```
 
 ## Complete Uninstall Commands
