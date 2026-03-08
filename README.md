@@ -116,16 +116,6 @@ Uninstall CloudNativePG operator with the following command:
 helm uninstall cnpg --namespace cnpg-system
 ```
 
-### PostgreSQL Cluster
-To install a PostgreSQL cluster using the local Helm chart, use the following command:
-
-```
-helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
-```
-Uninstall the PostgreSQL cluster with the following command:
-```
-helm uninstall postgres-greeting --namespace cnpg-system
-```
 
 ### Barman Cloud Plugin
 To install the Barman Cloud plugin for CloudNativePG, use the following Helm command:
@@ -167,6 +157,18 @@ helm upgrade --install greeting-minio minio/minio \
 Uninstall MinIO with the following command:
 ```
 helm uninstall greeting-minio
+```
+
+### PostgreSQL Cluster
+To install a PostgreSQL cluster using the local Helm chart, use the following command:
+In order to install the PostgreSQL cluster, the CNPG operator must be installed first, as described in the previous section.
+Also login minio and create access key and secret key for the Barman Cloud plugin to access the MinIO instance.
+```
+helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
+```
+Uninstall the PostgreSQL cluster with the following command:
+```
+helm uninstall postgres-greeting --namespace cnpg-system
 ```
 
 ## Complete Uninstall Commands
