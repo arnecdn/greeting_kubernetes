@@ -34,7 +34,7 @@ cluster:
       pg_tracing.max_span: "10000"
       pg_tracing.track: "all"
       # Send spans every 2 seconds to an otel collector
-      pg_tracing.otel_endpoint: "http://meta-monitoring-alloy.meta.svc.cluster.local:4317/v1/traces"
+      pg_tracing.otel_endpoint: "http://meta-alloy.meta.svc.cluster.local:4318/v1/traces"
       pg_tracing.otel_naptime: "2000"
 
 # Secret configuration for database credentials
@@ -87,7 +87,7 @@ backup:
 monitoring:
   enabled: true
   grafana_alloy:
-    endpoint: "http://grafana-alloy.default.svc.cluster.local:4318/v1/traces"
+    endpoint: "http://meta-alloy.meta.svc.cluster.local:4318/v1/traces"
     naptime: 2000
 
 # Resource limits and requests (optional)

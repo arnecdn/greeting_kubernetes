@@ -330,6 +330,7 @@ loki:
         ruler: loki-ruler
     structuredConfig:
       common:
+        replication_factor: 1
         storage:
           s3:
             access_key_id: "${rootUser}"
@@ -414,9 +415,60 @@ alloy:
     clustering:
       enabled: true
     configMap:
-      create: false
-      name: "agent-configmap"
-      key: 'config.river'
+      create: true
+      content: |
+        otelcol.receiver.otlp "default" {
+          grpc {
+            endpoint = "0.0.0.0:4317"
+          }
+
+          http {
+            endpoint = "0.0.0.0:4318"
+          }
+
+          output {
+            logs    = [otelcol.processor.batch.default.input]
+            traces  = [otelcol.processor.batch.default.input]
+            metrics = [otelcol.processor.batch.default.input]
+          }
+        }
+
+        otelcol.processor.batch "default" {
+          output {
+            logs    = [otelcol.exporter.loki.default.input]
+            traces  = [otelcol.exporter.otlp.tempo.input]
+            metrics = [otelcol.exporter.prometheus.default.input]
+          }
+        }
+
+        otelcol.exporter.prometheus "default" {
+          forward_to = [prometheus.remote_write.default.receiver]
+        }
+
+        prometheus.remote_write "default" {
+          endpoint {
+            url = "http://meta-mimir-distributor.meta.svc.cluster.local:8080/api/v1/push"
+          }
+        }
+
+        otelcol.exporter.otlp "tempo" {
+          client {
+            endpoint = "meta-tempo-distributor.meta.svc.cluster.local:4317"
+            tls {
+              insecure = true
+            }
+          }
+        }
+
+        otelcol.exporter.loki "default" {
+          forward_to = [loki.write.local.receiver]
+        }
+
+        loki.write "local" {
+          endpoint {
+            url = "http://meta-loki-distributor.meta.svc.cluster.local:3100/loki/api/v1/push"
+          }
+        }
     resources:
       requests:
         cpu: '100m'
@@ -432,6 +484,10 @@ alloy:
         port: 14268
         targetPort: 14268
         protocol: "TCP"
+      - name: "otlp-http"
+        port: 4318
+        targetPort: 4318
+        protocol: "TCP"
   controller:
     type: "statefulset"
     replicas: 1
@@ -446,6 +502,15 @@ mimir-distributed:
           name: "minio"
   mimir:
     structuredConfig:
+      ingester:
+        ring:
+          replication_factor: 1
+      alertmanager:
+        sharding_ring:
+          replication_factor: 1
+      store_gateway:
+        sharding_ring:
+          replication_factor: 1
       alertmanager_storage:
         s3:
           bucket_name: mimir-ruler
@@ -476,6 +541,8 @@ mimir-distributed:
         memory: 128Mi
       limits:
         memory: 256Mi
+    extraArgs:
+      "config.expand-env": "true"
   compactor:
     replicas: 1
     resources:
@@ -484,6 +551,8 @@ mimir-distributed:
         memory: 128Mi
       limits:
         memory: 256Mi
+    extraArgs:
+      "config.expand-env": "true"
   distributor:
     replicas: 1
     resources:
@@ -492,6 +561,8 @@ mimir-distributed:
         memory: 128Mi
       limits:
         memory: 256Mi
+    extraArgs:
+      "config.expand-env": "true"
   ingester:
     zoneAwareReplication:
       enabled: false
@@ -502,6 +573,8 @@ mimir-distributed:
         memory: 256Mi
       limits:
         memory: 512Mi
+    extraArgs:
+      "config.expand-env": "true"
   overrides_exporter:
     replicas: 1
     resources:
@@ -510,6 +583,8 @@ mimir-distributed:
         memory: 64Mi
       limits:
         memory: 128Mi
+    extraArgs:
+      "config.expand-env": "true"
   querier:
     replicas: 1
     resources:
@@ -518,6 +593,8 @@ mimir-distributed:
         memory: 128Mi
       limits:
         memory: 256Mi
+    extraArgs:
+      "config.expand-env": "true"
   query_frontend:
     replicas: 1
     resources:
@@ -526,6 +603,8 @@ mimir-distributed:
         memory: 128Mi
       limits:
         memory: 256Mi
+    extraArgs:
+      "config.expand-env": "true"
   query_scheduler:
     replicas: 1
     resources:
@@ -534,6 +613,8 @@ mimir-distributed:
         memory: 64Mi
       limits:
         memory: 128Mi
+    extraArgs:
+      "config.expand-env": "true"
   ruler:
     replicas: 1
     resources:
@@ -542,6 +623,8 @@ mimir-distributed:
         memory: 128Mi
       limits:
         memory: 256Mi
+    extraArgs:
+      "config.expand-env": "true"
   store_gateway:
     zoneAwareReplication:
       enabled: false
@@ -552,6 +635,8 @@ mimir-distributed:
         memory: 128Mi
       limits:
         memory: 256Mi
+    extraArgs:
+      "config.expand-env": "true"
   rollout_operator:
     resources:
       requests:
@@ -594,6 +679,10 @@ mimir-distributed:
 tempo-distributed:
   tempo:
     structuredConfig:
+      ingester:
+        lifecycler:
+          ring:
+            replication_factor: 1
       storage:
         trace:
           backend: s3
