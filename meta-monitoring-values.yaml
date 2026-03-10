@@ -416,6 +416,8 @@ alloy:
       enabled: true
     configMap:
       create: true
+      name: ""
+      key: "config.alloy"
       content: |
         otelcol.receiver.otlp "default" {
           grpc {
@@ -436,7 +438,7 @@ alloy:
         otelcol.processor.batch "default" {
           output {
             logs    = [otelcol.exporter.loki.default.input]
-            traces  = [otelcol.exporter.otlp.tempo.input]
+            traces  = [otelcol.exporter.otlphttp.tempo.input]
             metrics = [otelcol.exporter.prometheus.default.input]
           }
         }
@@ -447,16 +449,13 @@ alloy:
 
         prometheus.remote_write "default" {
           endpoint {
-            url = "http://meta-mimir-distributor.meta.svc.cluster.local:8080/api/v1/push"
+            url = "http://meta-monitoring-mimir-nginx.meta.svc.cluster.local:80/api/v1/push"
           }
         }
 
-        otelcol.exporter.otlp "tempo" {
+        otelcol.exporter.otlphttp "tempo" {
           client {
-            endpoint = "meta-tempo-distributor.meta.svc.cluster.local:4317"
-            tls {
-              insecure = true
-            }
+            endpoint = "http://meta-monitoring-tempo-distributor.meta.svc.cluster.local:4318"
           }
         }
 
@@ -466,7 +465,7 @@ alloy:
 
         loki.write "local" {
           endpoint {
-            url = "http://meta-loki-distributor.meta.svc.cluster.local:3100/loki/api/v1/push"
+            url = "http://meta-monitoring-loki-gateway.meta.svc.cluster.local:80/loki/api/v1/push"
           }
         }
     resources:
@@ -479,20 +478,26 @@ alloy:
       - name: "otel"
         port: 4317
         targetPort: 4317
+        containerPort: 4317
         protocol: "TCP"
       - name: "thrifthttp"
         port: 14268
         targetPort: 14268
+        containerPort: 14268
         protocol: "TCP"
       - name: "otlp-http"
         port: 4318
         targetPort: 4318
+        containerPort: 4318
         protocol: "TCP"
   controller:
     type: "statefulset"
     replicas: 1
     autoscaling:
       enabled: false
+  service:
+    enabled: true
+    type: ClusterIP
 mimir-distributed:
   minio:
     enabled: false
@@ -679,6 +684,8 @@ mimir-distributed:
 tempo-distributed:
   tempo:
     structuredConfig:
+      overrides:
+        max_bytes_per_trace: 20000000
       ingester:
         lifecycler:
           ring:
