@@ -6,21 +6,9 @@ The following components are included:
 Kafka
 Keda
 LGTM stack
-Grafana Alloy
 
 The resources are deployed with Helm from public and local Helm charts. 
 All resources have their own local configuration files. 
-
-## Installation from base
-The default installation of the complete sett of backing services for the greeting application group, 
-the following commands can be run. 
-``` 
-helm install kafka-chart ./kafka-chart --namespace default
-helm install keda kedacore/keda --namespace default
-helm install my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --version 2.1.0 --create-namespace --values helm-my-lgtm-stack-values.yaml
-helm install --namespace default grafana-alloy grafana/alloy --values helm-grafana-alloy-values.yaml
-```
-
 
 
 ## Kafka Helm Chart
@@ -62,14 +50,22 @@ Observability is implemented based on OpenTelemetry.
 Further documentation to
 ## install LGTM stack
 
+As the lgtm/distributed is obsolete, the meta-monitoring chart is used to deploy the LGTM stack components separately.
+Following commands are used to deploy the meta-monitoring chart with the configuration for the LGTM stack components.
+https://github.com/grafana/meta-monitoring-chart/blob/main/docs/installation.md
+
+Before installing the meta-monitoring chart, the MinIO secret must be created in the meta namespace, as the LGTM stack components use MinIO for storing data.
+```
+kubectl create secret generic minio -n meta --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
+helm install meta-monitoring grafana/meta-monitoring -n meta --create-namespace -f meta-monitoring-values.yaml
+```
+
+In order to scale the stack for minikube, all replicas can be set to 1 in the `meta-monitoring-values.yaml` file, 
+as the default values are set to 3 replicas for each component.
+
+
 ```
 helm repo add grafana https://grafana.github.io/helm-charts
-helm install my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --version 2.1.0 --create-namespace --values helm-my-lgtm-stack-values.yaml
-helm uninstall my-lgtm-distributed grafana/lgtm-distributed -n lgtm-stack
-
-helm upgrade my-lgtm-distributed --namespace=lgtm-stack grafana/lgtm-distributed --values helm-my-lgtm-stack-values.yaml
-
-helm -n lgtm-stack diff upgrade my-lgtm-distributed grafana/lgtm-distributed -f kubernetes/helm-my-lgtm-stack-values.yaml
 
 kubectl create namespace meta
 kubectl create secret generic minio -n meta --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
@@ -78,28 +74,6 @@ helm upgrade meta-monitoring grafana/meta-monitoring -n meta -f meta-monitoring-
 helm uninstall meta-monitoring -n meta
 ```
 
-As the lgtm/distributed is obsolete, the meta-monitoring chart is used to deploy the LGTM stack components separately.
-Following commands are used to deploy the meta-monitoring chart with the configuration for the LGTM stack components.
-https://github.com/grafana/meta-monitoring-chart/blob/main/docs/installation.md
-```
-kubectl create secret generic minio -n meta --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
-helm install meta-monitoring grafana/meta-monitoring -n meta --create-namespace -f meta-monitoring-values.yaml
-```
-
-# Grafana Alloy
-Grafana Alloy is a Grafana distribution that includes Grafana, Loki, Tempo, and Prom
-etheus, providing a complete observability solution.
-It is designed to be easy to install and use, with a focus on providing a unified experience
-
-```
-helm install --namespace default grafana-alloy grafana/alloy --values helm-grafana-alloy-values.yaml
-helm uninstall --namespace default my-grafana-alloy
-helm upgrade --namespace default my-grafana-alloy grafana/alloy --values helm-grafana-alloy-values.yaml
-```
-
-
-For adding tracing export from otel collector, the tempo-distributor must be configured for the otlp.
-Added configuration for otlp grpc and http to the configmap of tempo-distributor
 
 ### CNPG
 To install CloudNativePG in a non-cluster-wide mode, use the following Helm command:
@@ -171,42 +145,10 @@ Uninstall the PostgreSQL cluster with the following command:
 helm uninstall postgres-greeting --namespace cnpg-system
 ```
 
-## Complete Uninstall Commands
-
-To uninstall all the Helm charts and clean up the deployment, use the following commands in reverse order of installation:
-
-### Uninstall Grafana Alloy
-```bash
-helm uninstall grafana-alloy --namespace default
-```
-
-### Uninstall LGTM Stack
-```bash
-helm uninstall my-lgtm-distributed --namespace lgtm-stack
-```
-
-### Uninstall PostgreSQL Cluster
-```bash
-# Uninstall the local postgres-chart
-helm uninstall postgres-greeting --namespace cnpg-system
-
-# Uninstall CNPG operator
-helm uninstall cnpg --namespace cnpg-system
-```
-
-### Uninstall KEDA
-```bash
-helm uninstall keda --namespace default
-```
-
-### Uninstall Kafka
-```bash
-helm uninstall kafka-chart --namespace default
-```
 
 ### Clean up Namespaces (optional)
 ```bash
-kubectl delete namespace lgtm-stack
+kubectl delete namespace meta
 kubectl delete namespace cnpg-system
 kubectl delete namespace cnpg-database
 ```
