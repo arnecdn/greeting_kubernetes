@@ -63,15 +63,17 @@ helm install meta-monitoring grafana/meta-monitoring -n meta --create-namespace 
 In order to scale the stack for minikube, all replicas can be set to 1 in the `meta-monitoring-values.yaml` file, 
 as the default values are set to 3 replicas for each component.
 
+OBS: The meta-monitoring must be installed within the namespace **meta-monitoring**. 
+Sub-chastes of the meta-monitoring chart are installed in the same namespace, and apparantly depend on the namespace.
 
 ```
 helm repo add grafana https://grafana.github.io/helm-charts
 
-kubectl create namespace meta
-kubectl create secret generic minio -n meta --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
-helm install meta-monitoring grafana/meta-monitoring -n meta -f meta-monitoring-values.yaml
-helm upgrade meta-monitoring grafana/meta-monitoring -n meta -f meta-monitoring-values.yaml
-helm uninstall meta-monitoring -n meta
+kubectl create namespace meta-monitoring
+kubectl create secret generic minio -n meta-monitoring --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
+helm install meta-monitoring grafana/meta-monitoring -n meta-monitoring -f meta-monitoring-values.yaml
+helm upgrade meta-monitoring grafana/meta-monitoring -n meta-monitoring -f meta-monitoring-values.yaml
+helm uninstall meta-monitoring -n meta-monitoring
 ```
 
 
