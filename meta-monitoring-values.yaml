@@ -449,13 +449,13 @@ alloy:
 
         prometheus.remote_write "default" {
           endpoint {
-            url = "http://meta-monitoring-mimir-nginx.meta.svc.cluster.local:80/api/v1/push"
+            url = "http://meta-monitoring-mimir-nginx.meta-monitoring.svc.cluster.local:80/api/v1/push"
           }
         }
 
         otelcol.exporter.otlphttp "tempo" {
           client {
-            endpoint = "http://meta-monitoring-tempo-distributor.meta.svc.cluster.local:4318"
+            endpoint = "http://meta-monitoring-tempo-distributor.meta-monitoring.svc.cluster.local:4318"
           }
         }
 
@@ -465,7 +465,7 @@ alloy:
 
         loki.write "local" {
           endpoint {
-            url = "http://meta-monitoring-loki-gateway.meta.svc.cluster.local:80/loki/api/v1/push"
+            url = "http://meta-monitoring-loki-gateway.meta-monitoring.svc.cluster.local:80/loki/api/v1/push"
           }
         }
     resources:
