@@ -5,7 +5,7 @@
 cluster:
   name: postgres-greeting
   namespace: cnpg-system
-  instances: 1
+  instances: 2  # 1 primary + 1 read replica
 
   # Storage configuration
   storage:
@@ -50,10 +50,18 @@ config:
   pg_hba_conf: |
     host all all 0.0.0.0/0 md5
 
-# Service configuration
+# Service configuration (primary - read/write)
 service:
   enabled: true
   name: postgres-greeting-service
+  type: ClusterIP
+  port: 5432
+  targetPort: 5432
+
+# Read replica service configuration (read-only)
+replicaService:
+  enabled: true
+  name: postgres-greeting-replica-service
   type: ClusterIP
   port: 5432
   targetPort: 5432
@@ -66,6 +74,14 @@ imageCatalog:
     - major: 16
       repository: docker.io/arnecdn/greeting-postgres
       tag: "0.27"
+
+# MinIO configuration
+minio:
+  # MinIO root credentials (must match the Helm install of greeting-minio)
+  rootUser: rootuser
+  rootPassword: rootpass123
+  endpoint: http://greeting-minio.cnpg-system.svc.cluster.local:9000
+  bucketName: barman-cloud-greeting-backup
 
 # Backup configuration
 backup:

@@ -56,21 +56,19 @@ https://github.com/grafana/meta-monitoring-chart/blob/main/docs/installation.md
 
 Before installing the meta-monitoring chart, the MinIO secret must be created in the meta namespace, as the LGTM stack components use MinIO for storing data.
 ```
-kubectl create secret generic minio -n meta --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
-helm install meta-monitoring grafana/meta-monitoring -n meta --create-namespace -f meta-monitoring-values.yaml
+kubectl create namespace meta-monitoring
+kubectl create secret generic minio -n meta-monitoring --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
+
 ```
 
 In order to scale the stack for minikube, all replicas can be set to 1 in the `meta-monitoring-values.yaml` file, 
 as the default values are set to 3 replicas for each component.
 
 OBS: The meta-monitoring must be installed within the namespace **meta-monitoring**. 
-Sub-chastes of the meta-monitoring chart are installed in the same namespace, and apparantly depend on the namespace.
-
+Sub-charts of the meta-monitoring chart are installed in the same namespace, and apparantly depend on the namespace.
 ```
 helm repo add grafana https://grafana.github.io/helm-charts
 
-kubectl create namespace meta-monitoring
-kubectl create secret generic minio -n meta-monitoring --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
 helm install meta-monitoring grafana/meta-monitoring -n meta-monitoring -f meta-monitoring-values.yaml
 helm upgrade meta-monitoring grafana/meta-monitoring -n meta-monitoring -f meta-monitoring-values.yaml
 helm uninstall meta-monitoring -n meta-monitoring
@@ -130,6 +128,16 @@ helm upgrade --install greeting-minio minio/minio \
   --set mode=standalone \
   --set rootUser=rootuser,rootPassword=rootpass123
 ```
+
+> **Note:** Bucket creation and access key provisioning is now automated.
+> The postgres-chart includes a Helm pre-install/pre-upgrade hook Job that:
+> 1. Creates the `barman-cloud-greeting-backup` bucket in MinIO
+> 2. Creates a dedicated MinIO service account for Barman Cloud
+> 3. Stores the generated credentials in the `minio-credentials` Kubernetes secret
+>
+> The MinIO root credentials in `values.yaml` (`minio.rootUser` / `minio.rootPassword`)
+> must match the ones used when installing the MinIO Helm chart above.
+
 Uninstall MinIO with the following command:
 ```
 helm uninstall greeting-minio
@@ -138,7 +146,7 @@ helm uninstall greeting-minio
 ### PostgreSQL Cluster
 To install a PostgreSQL cluster using the local Helm chart, use the following command:
 In order to install the PostgreSQL cluster, the CNPG operator must be installed first, as described in the previous section.
-Also login minio and create access key and secret key for the Barman Cloud plugin to access the MinIO instance.
+The MinIO bucket and backup credentials are automatically provisioned by a Helm hook Job during installation.
 ```
 helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
 ```

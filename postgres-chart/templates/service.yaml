@@ -17,4 +17,24 @@ spec:
       protocol: TCP
       name: postgres
 {{- end }}
+---
+{{- if .Values.replicaService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.replicaService.name | default (printf "%s-replica-service" .Values.cluster.name) }}
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "postgres-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    cnpg.io/cluster: {{ .Values.cluster.name }}
+    role: replica
+  type: {{ .Values.replicaService.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.replicaService.port }}
+      targetPort: {{ .Values.replicaService.targetPort }}
+      protocol: TCP
+      name: postgres
+{{- end }}
 

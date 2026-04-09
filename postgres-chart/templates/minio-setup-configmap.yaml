@@ -1,0 +1,83 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.cluster.name }}-minio-setup-script
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "postgres-chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+data:
+  minio-setup.sh: |
+    #!/bin/sh
+    set -e
+
+    echo "==> Configuring MinIO client..."
+    mc alias set myminio {{ .Values.minio.endpoint }} ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
+
+    echo "==> Creating bucket '{{ .Values.minio.bucketName }}' (if not exists)..."
+    mc mb --ignore-existing myminio/{{ .Values.minio.bucketName }}
+
+    echo "==> Creating service account for Barman Cloud..."
+    SA_OUTPUT=$(mc admin user svcacct add myminio ${MINIO_ROOT_USER} --name barman-backup --json 2>&1 || true)
+
+    # Check if it already exists using shell string matching
+    case "$SA_OUTPUT" in
+      *"already exists"*)
+        echo "==> Service account already exists, removing and recreating..."
+        mc admin user svcacct rm myminio barman-backup
+        SA_OUTPUT=$(mc admin user svcacct add myminio ${MINIO_ROOT_USER} --name barman-backup --json)
+        ;;
+    esac
+
+    echo "==> Parsing credentials from JSON output..."
+    # Parse JSON using only shell parameter expansion (no grep/sed/awk needed)
+    # JSON looks like: {"accessKey":"...","secretKey":"...","...}
+    ACCESS_KEY=${SA_OUTPUT#*\"accessKey\":\"}
+    ACCESS_KEY=${ACCESS_KEY%%\"*}
+
+    SECRET_KEY=${SA_OUTPUT#*\"secretKey\":\"}
+    SECRET_KEY=${SECRET_KEY%%\"*}
+
+    if [ -z "$ACCESS_KEY" ] || [ -z "$SECRET_KEY" ]; then
+      echo "ERROR: Failed to parse credentials from service account output"
+      echo "Output was: $SA_OUTPUT"
+      exit 1
+    fi
+
+    echo "==> Verifying bucket access with new credentials..."
+    mc alias set verify {{ .Values.minio.endpoint }} "${ACCESS_KEY}" "${SECRET_KEY}"
+    mc ls verify/{{ .Values.minio.bucketName }} > /dev/null 2>&1
+    echo "==> Bucket access verified."
+
+    # Write credentials to shared volume for kubectl container
+    echo -n "${ACCESS_KEY}" > /shared/access-key
+    echo -n "${SECRET_KEY}" > /shared/secret-key
+    echo "==> Credentials written to shared volume."
+  kubectl-setup.sh: |
+    #!/bin/sh
+    set -e
+
+    echo "==> Reading credentials from shared volume..."
+    ACCESS_KEY=$(cat /shared/access-key)
+    SECRET_KEY=$(cat /shared/secret-key)
+
+    if [ -z "$ACCESS_KEY" ] || [ -z "$SECRET_KEY" ]; then
+      echo "ERROR: Credentials not found in shared volume"
+      exit 1
+    fi
+
+    echo "==> Creating/updating Kubernetes secret '{{ .Values.backup.s3SecretName }}'..."
+    kubectl create secret generic {{ .Values.backup.s3SecretName }} \
+      --namespace={{ .Values.cluster.namespace | default .Release.Namespace }} \
+      --from-literal={{ .Values.backup.s3AccessKeyIdKey }}="${ACCESS_KEY}" \
+      --from-literal={{ .Values.backup.s3AccessSecretKeyKey }}="${SECRET_KEY}" \
+      --dry-run=client -o yaml | kubectl apply -f -
+
+    echo "==> MinIO setup complete!"
+    echo "    Bucket: {{ .Values.minio.bucketName }}"
+    echo "    Secret: {{ .Values.backup.s3SecretName }}"
+{{- end }}
