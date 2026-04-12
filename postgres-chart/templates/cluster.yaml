@@ -11,6 +11,18 @@ metadata:
   {{- end }}
 spec:
   instances: {{ .Values.cluster.instances }}
+
+  enableSuperuserAccess: {{ .Values.cluster.enableSuperuserAccess | default false }}
+
+  startDelay: {{ .Values.cluster.startDelay | default 3600 }}
+  stopDelay: {{ .Values.cluster.stopDelay | default 1800 }}
+  switchoverDelay: {{ .Values.cluster.switchoverDelay | default 3600 }}
+  failoverDelay: {{ .Values.cluster.failoverDelay | default 0 }}
+
+  replicationSlots:
+    highAvailability:
+      enabled: true
+
   storage:
     size: {{ .Values.cluster.storage.size }}
     {{- if .Values.cluster.storage.storageClass }}
@@ -46,6 +58,13 @@ spec:
     parameters:
       {{- range $key, $value := .Values.cluster.postgresql.parameters }}
       {{ $key }}: {{ $value | quote }}
+      {{- end }}
+    pg_hba:
+      {{- if .Values.config.pg_hba }}
+      {{- toYaml .Values.config.pg_hba | nindent 6 }}
+      {{- else }}
+      - host all all 0.0.0.0/0 md5
+      - host all all ::/0 md5
       {{- end }}
 
   {{- if .Values.resources }}

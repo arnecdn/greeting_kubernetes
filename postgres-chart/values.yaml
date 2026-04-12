@@ -6,6 +6,7 @@ cluster:
   name: postgres-greeting
   namespace: cnpg-system
   instances: 2  # 1 primary + 1 read replica
+  enableSuperuserAccess: true  # Allows connecting as postgres superuser (useful for port-forward debugging)
 
   # Storage configuration
   storage:
@@ -36,6 +37,12 @@ cluster:
       # Send spans every 2 seconds to an otel collector
       pg_tracing.otel_endpoint: "http://meta-monitoring-alloy.meta-monitoring.svc.cluster.local:4318/v1/traces"
       pg_tracing.otel_naptime: "2000"
+      # TCP keepalive settings to prevent idle connection drops (important for port-forwarding)
+      tcp_keepalives_idle: "60"
+      tcp_keepalives_interval: "10"
+      tcp_keepalives_count: "6"
+      # Prevent idle replication connections from being dropped
+      wal_receiver_timeout: "90s"
 
 # Secret configuration for database credentials
 secret:
@@ -49,6 +56,10 @@ config:
   name: postgres-greeting-config
   pg_hba_conf: |
     host all all 0.0.0.0/0 md5
+  # pg_hba rules applied directly to the CNPG Cluster spec (affects both primary and replicas)
+  pg_hba:
+    - host all all 0.0.0.0/0 md5
+    - host all all ::/0 md5
 
 # Service configuration (primary - read/write)
 service:
@@ -86,7 +97,7 @@ minio:
 # Backup configuration
 backup:
   enabled: true
-  schedule: "0 2 * * *"  # Daily at 2 AM
+  schedule: "0 0 2 * * *"  # Daily at 2 AM (6-field cron: sec min hour dom mon dow)
   objectStoreName: minio-backup-store
   retentionPolicy: 1d
   destinationPath: "s3://barman-cloud-greeting-backup"
@@ -119,7 +130,7 @@ resources:
 labels: {}
 annotations: {}
 
-# Node selector and tolerations (optional)
+# Node selector and tolerations (optional)f
 nodeSelector: {}
 tolerations: []
 affinity: {}
