@@ -21,7 +21,7 @@ cluster:
   # Image configuration
   image:
     catalog:
-      major: 16
+      major: 17
 
   # PostgreSQL parameters
   postgresql:
@@ -82,9 +82,9 @@ imageCatalog:
   enabled: true
   name: postgresql
   images:
-    - major: 16
+    - major: 17
       repository: docker.io/arnecdn/greeting-postgres
-      tag: "0.27"
+      tag: "0.30"
 
 # MinIO configuration
 minio:
@@ -105,10 +105,17 @@ backup:
   s3SecretName: minio-credentials
   s3AccessKeyIdKey: ACCESS_KEY_ID
   s3AccessSecretKeyKey: ACCESS_SECRET_KEY
+  # Deterministic MinIO service-account credentials used by setup hook.
+  s3ServiceAccount:
+    accessKey: barmanbackup
+    secretKey: barmanbackupsecret1234567890
   walCompression: gzip
   walMaxParallel: 2
-
-
+  # Keep disabled when using hook-generated MinIO service-account credentials.
+  staticCredentialsSecret:
+    enabled: false
+    accessKeyId: ""
+    secretAccessKey: ""
 
 # Monitoring and observability
 monitoring:

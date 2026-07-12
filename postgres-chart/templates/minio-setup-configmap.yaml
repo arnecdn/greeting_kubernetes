@@ -11,9 +11,12 @@ metadata:
     "helm.sh/hook-weight": "-10"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 data:
-  setup.sh: |
+  minio-setup.sh: |
     #!/bin/sh
     set -e
+
+    SVC_ACCESS_KEY={{ .Values.backup.s3ServiceAccount.accessKey | quote }}
+    SVC_SECRET_KEY={{ .Values.backup.s3ServiceAccount.secretKey | quote }}
 
     echo "==> Configuring MinIO client..."
     mc alias set myminio {{ .Values.minio.endpoint }} ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
@@ -21,69 +24,52 @@ data:
     echo "==> Creating bucket '{{ .Values.minio.bucketName }}' (if not exists)..."
     mc mb --ignore-existing myminio/{{ .Values.minio.bucketName }}
 
-    echo "==> Creating service account for Barman Cloud..."
-    SA_OUTPUT=$(mc admin user svcacct add myminio ${MINIO_ROOT_USER} --name barman-backup 2>&1 || true)
+    echo "==> Creating/updating service account for Barman Cloud..."
+    # Recreate the svc account by known access key so upgrades are idempotent.
+    mc admin user svcacct rm myminio "${SVC_ACCESS_KEY}" >/dev/null 2>&1 || true
+    mc admin user svcacct add myminio ${MINIO_ROOT_USER} \
+      --access-key "${SVC_ACCESS_KEY}" \
+      --secret-key "${SVC_SECRET_KEY}" \
+      --name barman-backup >/dev/null
 
-    # If the service account already exists, remove and recreate it
-    if echo "$SA_OUTPUT" | grep -q "already exists"; then
-      echo "==> Service account already exists, removing and recreating..."
-      mc admin user svcacct rm myminio barman-backup
-      SA_OUTPUT=$(mc admin user svcacct add myminio ${MINIO_ROOT_USER} --name barman-backup)
-    fi
-
-    echo "==> Parsing credentials..."
-    ACCESS_KEY=$(echo "$SA_OUTPUT" | grep "Access Key" | awk '{print $NF}')
-    SECRET_KEY=$(echo "$SA_OUTPUT" | grep "Secret Key" | awk '{print $NF}')
-
-    if [ -z "$ACCESS_KEY" ] || [ -z "$SECRET_KEY" ]; then
-      echo "ERROR: Failed to parse credentials from service account output"
-      echo "Output was: $SA_OUTPUT"
-      exit 1
-    fi
-
-    echo "==> Verifying bucket access with new credentials..."
-    mc alias set verify {{ .Values.minio.endpoint }} "${ACCESS_KEY}" "${SECRET_KEY}"
+    echo "==> Verifying bucket access with service account credentials..."
+    mc alias set verify {{ .Values.minio.endpoint }} "${SVC_ACCESS_KEY}" "${SVC_SECRET_KEY}"
     mc ls verify/{{ .Values.minio.bucketName }} > /dev/null 2>&1
     echo "==> Bucket access verified."
 
-    echo "==> Creating/updating Kubernetes secret '{{ .Values.backup.s3SecretName }}'..."
-    KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-    KUBE_CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    echo "==> Writing credentials for kubectl step..."
+    printf "%s" "${SVC_ACCESS_KEY}" > /shared/access_key
+    printf "%s" "${SVC_SECRET_KEY}" > /shared/secret_key
+
+  kubectl-setup.sh: |
+    #!/bin/sh
+    set -e
+
     KUBE_NS={{ .Values.cluster.namespace | default .Release.Namespace }}
-    KUBE_API=https://kubernetes.default.svc
+    RELEASE_NAME={{ .Release.Name }}
+    RELEASE_NS={{ .Release.Namespace }}
+    SECRET_NAME={{ .Values.backup.s3SecretName }}
 
-    B64_ACCESS_KEY=$(echo -n "${ACCESS_KEY}" | base64)
-    B64_SECRET_KEY=$(echo -n "${SECRET_KEY}" | base64)
+    ACCESS_KEY=$(cat /shared/access_key)
+    SECRET_KEY=$(cat /shared/secret_key)
 
-    # Try to get existing secret
-    HTTP_CODE=$(wget --header="Authorization: Bearer ${KUBE_TOKEN}" \
-      --ca-certificate="${KUBE_CA}" \
-      --server-response \
-      -O /dev/null \
-      "${KUBE_API}/api/v1/namespaces/${KUBE_NS}/secrets/{{ .Values.backup.s3SecretName }}" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
-
-    if [ "$HTTP_CODE" = "200" ]; then
-      echo "==> Updating existing secret..."
-      wget --header="Authorization: Bearer ${KUBE_TOKEN}" \
-        --header="Content-Type: application/strategic-merge-patch+json" \
-        --ca-certificate="${KUBE_CA}" \
-        --method=PATCH \
-        --body-data="{\"data\":{\"{{ .Values.backup.s3AccessKeyIdKey }}\":\"${B64_ACCESS_KEY}\",\"{{ .Values.backup.s3AccessSecretKeyKey }}\":\"${B64_SECRET_KEY}\"}}" \
-        -O /dev/null \
-        "${KUBE_API}/api/v1/namespaces/${KUBE_NS}/secrets/{{ .Values.backup.s3SecretName }}"
-    else
-      echo "==> Creating new secret..."
-      wget --header="Authorization: Bearer ${KUBE_TOKEN}" \
-        --header="Content-Type: application/json" \
-        --ca-certificate="${KUBE_CA}" \
-        --method=POST \
-        --body-data="{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"name\":\"{{ .Values.backup.s3SecretName }}\",\"namespace\":\"${KUBE_NS}\"},\"type\":\"Opaque\",\"data\":{\"{{ .Values.backup.s3AccessKeyIdKey }}\":\"${B64_ACCESS_KEY}\",\"{{ .Values.backup.s3AccessSecretKeyKey }}\":\"${B64_SECRET_KEY}\"}}" \
-        -O /dev/null \
-        "${KUBE_API}/api/v1/namespaces/${KUBE_NS}/secrets"
+    if [ -z "$ACCESS_KEY" ] || [ -z "$SECRET_KEY" ]; then
+      echo "ERROR: Missing credentials from /shared volume"
+      exit 1
     fi
+
+    echo "==> Creating/updating Kubernetes secret '${SECRET_NAME}'..."
+    kubectl -n "${KUBE_NS}" create secret generic "${SECRET_NAME}" \
+      --from-literal={{ .Values.backup.s3AccessKeyIdKey }}="${ACCESS_KEY}" \
+      --from-literal={{ .Values.backup.s3AccessSecretKeyKey }}="${SECRET_KEY}" \
+      --dry-run=client -o yaml | kubectl apply -f -
+
+    # Ensure Helm can track/adopt this secret safely across upgrades.
+    kubectl -n "${KUBE_NS}" label secret "${SECRET_NAME}" app.kubernetes.io/managed-by=Helm --overwrite
+    kubectl -n "${KUBE_NS}" annotate secret "${SECRET_NAME}" meta.helm.sh/release-name="${RELEASE_NAME}" --overwrite
+    kubectl -n "${KUBE_NS}" annotate secret "${SECRET_NAME}" meta.helm.sh/release-namespace="${RELEASE_NS}" --overwrite
 
     echo "==> MinIO setup complete!"
     echo "    Bucket: {{ .Values.minio.bucketName }}"
-    echo "    Secret: {{ .Values.backup.s3SecretName }}"
+    echo "    Secret: ${SECRET_NAME}"
 {{- end }}
-
