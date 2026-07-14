@@ -26,7 +26,25 @@ spec:
   storage:
     size: {{ .Values.cluster.storage.size }}
     {{- if .Values.cluster.storage.storageClass }}
-    storageClass: {{ .Values.cluster.storage.storageClass }}
+    storageClass: {{ .Values.cluster.storage.storageClass | quote }}
+    {{- end }}
+    {{- with .Values.cluster.storage.pvcTemplate }}
+    {{- $pvcTemplate := . }}
+    {{- $selector := get $pvcTemplate "selector" }}
+    {{- $pvcTemplateWithoutSelector := omit $pvcTemplate "selector" }}
+    pvcTemplate:
+      {{- with $pvcTemplateWithoutSelector }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- with $selector }}
+      selector:
+        {{- if or (hasKey . "matchLabels") (hasKey . "matchExpressions") }}
+        {{- toYaml . | nindent 8 }}
+        {{- else }}
+        matchLabels:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
     {{- end }}
 
   imageCatalogRef:

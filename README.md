@@ -150,6 +150,37 @@ The MinIO bucket and backup credentials are automatically provisioned by a Helm 
 ```
 helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
 ```
+
+PVCs for PostgreSQL are managed by CloudNativePG from the chart's `cluster.storage` values.
+Example override with an explicit PVC template:
+```yaml
+cluster:
+  storage:
+    size: 20Gi
+    storageClass: standard
+    pvcTemplate:
+      accessModes:
+        - ReadWriteOnce
+      volumeMode: Filesystem
+      selector:
+        matchLabels:
+          app: postgres-greeting
+```
+
+You can also use a shorthand selector map, and the chart will render it as `matchLabels`:
+```yaml
+cluster:
+  storage:
+    pvcTemplate:
+      selector:
+        app: postgres-greeting
+```
+
+Install or upgrade with a custom values file:
+```bash
+helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace -f postgres-values.yaml
+```
+
 Uninstall the PostgreSQL cluster with the following command:
 ```
 helm uninstall postgres-greeting --namespace cnpg-system

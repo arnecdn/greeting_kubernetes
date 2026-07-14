@@ -10,9 +10,15 @@ cluster:
 
   # Storage configuration
   storage:
-    size: 8Gi
-    storageClass: ""  # Use default storage class
-
+    size: 20Gi
+    storageClass: standard
+    pvcTemplate:
+      accessModes:
+        - ReadWriteOnce
+      volumeMode: Filesystem
+      selector:
+        matchLabels:
+          app: postgres-greeting
   # Database configuration
   database:
     name: greeting_rust
@@ -27,6 +33,7 @@ cluster:
   postgresql:
     shared_preload_libraries:
       - pg_tracing
+      - pg_stat_statements
     parameters:
       shared_buffers: "128MB"
       # Enable query ID computation for better tracing
