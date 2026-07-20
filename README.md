@@ -8,7 +8,30 @@ Keda
 LGTM stack
 
 The resources are deployed with Helm from public and local Helm charts. 
-All resources have their own local configuration files. 
+All resources have their own local configuration files.
+
+Installation steps for the components are described in the following sections.
+``` 
+helm install kafka-chart ./kafka-chart --namespace default
+helm install keda kedacore/keda --namespace default
+kubectl create namespace meta-monitoring
+kubectl create secret generic minio -n meta-monitoring --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123 secret/minio created
+helm install meta-monitoring grafana/meta-monitoring -n meta-monitoring -f meta-monitoring-values.yaml
+helm upgrade --install cnpg --namespace cnpg-system --create-namespace --set config.clusterWide=false --version 0.27.0 cnpg/cloudnative-pg
+
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
+helm upgrade --install plugin-barman-cloud cnpg/plugin-barman-cloud --namespace cnpg-system
+
+helm upgrade --install greeting-minio minio/minio \
+--namespace cnpg-system \
+--set resources.requests.memory=512Mi \
+--set replicas=1 \
+--set persistence.enabled=false \
+--set mode=standalone \
+--set rootUser=rootuser,rootPassword=rootpass123
+helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
+``` 
 
 
 ## Kafka Helm Chart

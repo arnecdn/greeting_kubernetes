@@ -59,14 +59,14 @@ spec:
       owner: {{ .Values.cluster.database.owner }}
       secret:
         name: {{ .Values.secret.name | default (printf "%s-secret" .Values.cluster.name) }}
-
-{{/*  {{- if .Values.cluster.extensions.enabled }}*/}}
-{{/*  extensions:*/}}
-{{/*    {{- range .Values.cluster.extensions }}*/}}
-{{/*    - name: {{ .name }}*/}}
-{{/*      ensure: {{ .ensure | default "present" }}*/}}
-{{/*    {{- end }}*/}}
-{{/*  {{- end }}*/}}
+      {{- with .Values.cluster.bootstrap.initdb.postInitSQL }}
+      postInitSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.cluster.bootstrap.initdb.postInitApplicationSQL }}
+      postInitApplicationSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 
   postgresql:
     shared_preload_libraries:

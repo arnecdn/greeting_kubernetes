@@ -1,11 +1,26 @@
-TAG ?= 0.30
+
 APP_NAME = greeting-postgres
 IMAGE_NAME = arnecdn/$(APP_NAME)
 
-.PHONY: install all build_image deploy clean validate-tag
+# Function to get next version from existing images in the repository
+define get_next_version
+	IMAGES=$$(minikube image ls 2>/dev/null | grep -E '^(docker.io/)?$(IMAGE_NAME):[0-9]+\.[0-9]+$$' || true); \
+	if [ -z "$$IMAGES" ]; then \
+		echo "0.1"; \
+	else \
+		VERSIONS=$$(echo "$$IMAGES" | sed -E 's/.*:([0-9]+\.[0-9]+)/\1/' | sort -t. -k1,1n -k2,2n | tail -1); \
+		MAJOR=$$(echo "$$VERSIONS" | cut -d. -f1); \
+		MINOR=$$(echo "$$VERSIONS" | cut -d. -f2); \
+		NEW_MINOR=$$((MINOR + 1)); \
+		echo "$$MAJOR.$$NEW_MINOR"; \
+	fi
+endef
 
+TAG := $(shell $(get_next_version))
 
-all: build_image deploy
+.PHONY: all build_image deploy clean clean-images validate-tag get-next-version undeploy
+
+all: build_image clean
 
 validate-tag:
 	@if ! echo $(TAG) | grep -Eq '^[0-9]+\.[0-9]+$$'; then \
@@ -13,21 +28,48 @@ validate-tag:
 		exit 1; \
 	fi
 
+get-next-version:
+	@echo "Current images in repository:"; \
+	IMAGES=$$(minikube image ls 2>/dev/null | grep -E '^(docker.io/)?$(IMAGE_NAME):[0-9]+\.[0-9]+$$' || true); \
+	if [ -z "$$IMAGES" ]; then \
+		echo "  (none)"; \
+	else \
+		echo "$$IMAGES" | sed 's/^/  /'; \
+	fi; \
+	echo ""; \
+	echo "Next version to be built: $(TAG)"
+
 build_image: validate-tag
-	@echo "Building Docker image directly in Minikube..."
-	podman image build -t docker.io/"$(IMAGE_NAME):$(TAG)" -f Dockerfile . || { \
+	@echo "Building Docker image with tag $(TAG)..."
+	minikube image build -t "$(IMAGE_NAME):$(TAG)" -f Dockerfile . || { \
 		echo "Error: Docker build failed."; \
 		exit 1; \
 	}
 
-deploy: build_image
-	@echo "Applying Kubernetes deployment..."
-	podman save docker.io/"$(IMAGE_NAME):$(TAG)" | minikube image load - || { \
-		echo "Error: Failed to load image into Minikube."; \
-		exit 1; \
-	}
+clean-images:
+	@echo "Listing all $(IMAGE_NAME) images in Minikube..."
+	@MATCHES=$$(minikube image ls 2>/dev/null | grep -E '^(docker.io/)?$(IMAGE_NAME):[0-9]+\.[0-9]+$$' || true); \
+	if [ -z "$$MATCHES" ]; then \
+		echo "No matching images found in Minikube."; \
+	else \
+		echo "Found the following versions:"; \
+		echo "$$MATCHES" | sed 's/^/  /'; \
+		echo ""; \
+		MAX_VERSION=$$(echo "$$MATCHES" | sed -E 's/.*:([0-9]+\.[0-9]+)/\1/' | sort -t. -k1,1n -k2,2n | tail -1); \
+		echo "Removing old versions (keeping highest: $$MAX_VERSION)..."; \
+		echo "$$MATCHES" | while IFS= read -r IMG; do \
+			[ -z "$$IMG" ] && continue; \
+			RAW_IMG="$${IMG#docker.io/}"; \
+			IMG_TAG="$${RAW_IMG##*:}"; \
+			if [ "$$IMG_TAG" != "$$MAX_VERSION" ]; then \
+				echo "  Removing: $$RAW_IMG"; \
+				minikube image rm "$$RAW_IMG" 2>/dev/null || true; \
+				minikube image rm "docker.io/$$RAW_IMG" 2>/dev/null || true; \
+			else \
+				echo "  Keeping (highest): $$RAW_IMG"; \
+			fi; \
+		done; \
+	fi
 
-clean:
-	@echo "Cleaning up..."
-	@echo "Removing image from Minikube..."
-	minikube image rm docker.io/$(IMAGE_NAME):$(TAG) 2>/dev/null || true
+clean: clean-images
+	@echo "Cleaning local target..."

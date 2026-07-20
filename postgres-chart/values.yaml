@@ -29,6 +29,12 @@ cluster:
     catalog:
       major: 17
 
+  # SQL executed during cluster bootstrap
+  bootstrap:
+    initdb:
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
   # PostgreSQL parameters
   postgresql:
     shared_preload_libraries:
@@ -91,7 +97,7 @@ imageCatalog:
   images:
     - major: 17
       repository: docker.io/arnecdn/greeting-postgres
-      tag: "0.30"
+      tag: "0.31"
 
 # MinIO configuration
 minio:
