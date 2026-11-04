@@ -1,0 +1,18 @@
+apiVersion: v2
+name: garage-chart
+description: Garage S3 object storage for the greeting app (wraps the upstream Garage chart and provisions buckets, access keys and credential Secrets)
+type: application
+version: 0.1.0
+# Upstream Garage chart vendored unmodified in charts/garage
+# (git.deuxfleurs.fr/Deuxfleurs/garage, tag v2.5.0, script/helm/garage, chart version 0.10.4)
+appVersion: "v2.5.0"
+dependencies:
+  # Vendored in charts/garage; no repository is published for the upstream chart
+  - name: garage
+    version: 0.10.4
+keywords:
+  - garage
+  - s3
+  - cnpg
+
+

@@ -1,0 +1,172 @@
+{{- $fullname := include "garage-chart.provisionerName" . }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "garage-chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.job.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "garage-chart.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ $fullname }}
+      securityContext:
+        {{- toYaml .Values.job.podSecurityContext | nindent 8 }}
+      {{- with .Values.job.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.job.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: provision
+          image: "{{ .Values.job.image.repository }}:{{ .Values.job.image.tag }}"
+          imagePullPolicy: {{ .Values.job.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.job.securityContext | nindent 12 }}
+          {{- with .Values.job.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: ADMIN_URL
+              {{- $adminBind := dig "garage" "admin" "apiBindAddr" "[::]:3903" .Values.garage }}
+              value: "http://{{ include "garage-chart.garageFullname" . }}-admin.{{ .Release.Namespace }}.svc:{{ regexFind "[0-9]+$" $adminBind }}"
+            - name: S3_REGION
+              value: {{ dig "garage" "s3" "api" "region" "garage" .Values.garage | quote }}
+            - name: BUCKETS
+              value: {{ join " " (.Values.buckets | default list) | quote }}
+            - name: GARAGE_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.adminTokenSecret.name }}
+                  key: {{ .Values.adminTokenSecret.key }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              SA=/var/run/secrets/kubernetes.io/serviceaccount
+
+              fail() { echo "ERROR: $*" >&2; exit 1; }
+
+              # req <curl args...>: sets CODE (HTTP status) and BODY
+              req() {
+                out=$(curl -sS -w '\n%{http_code}' "$@")
+                CODE=$(printf '%s\n' "$out" | tail -n 1)
+                BODY=$(printf '%s\n' "$out" | sed '$d')
+              }
+              gapi() { p=$1; shift; req -H "Authorization: Bearer $GARAGE_ADMIN_TOKEN" "$@" "$ADMIN_URL$p"; }
+              kapi() { p=$1; shift; req --cacert "$SA/ca.crt" -H "Authorization: Bearer $(cat "$SA/token")" "$@" "https://kubernetes.default.svc$p"; }
+              # json_str <json> <field>: value of the first string field with that name
+              json_str() { printf '%s' "$1" | grep -o "\"$2\": *\"[^\"]*\"" | head -n 1 | sed 's/.*"\([^"]*\)"$/\1/'; }
+              b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
+
+              # ensure_key <name> <secret ns> <secret name> <id key> <secret key>
+              # Sets KEY_ID / KEY_SECRET. Order: existing Garage key > import from existing Secret > new key.
+              ensure_key() {
+                gapi "/v2/GetKeyInfo?search=$1&showSecretKey=true"
+                case "$CODE" in
+                  200) echo "Key $1 already exists" ;;
+                  404)
+                    imported=""
+                    if [ -n "$3" ]; then
+                      kapi "/api/v1/namespaces/$2/secrets/$3"
+                      if [ "$CODE" = 200 ]; then
+                        id=$(json_str "$BODY" "$4" | base64 -d 2>/dev/null || true)
+                        sec=$(json_str "$BODY" "$5" | base64 -d 2>/dev/null || true)
+                        if [ -n "$id" ] && [ -n "$sec" ]; then
+                          gapi /v2/ImportKey -X POST -H 'Content-Type: application/json' \
+                            -d "{\"accessKeyId\":\"$id\",\"secretAccessKey\":\"$sec\",\"name\":\"$1\"}"
+                          if [ "$CODE" = 200 ]; then
+                            imported=1
+                            echo "Imported key $1 from Secret $2/$3"
+                          else
+                            echo "Could not import credentials from Secret $2/$3 (HTTP $CODE), creating a new key"
+                          fi
+                        fi
+                      fi
+                    fi
+                    if [ -z "$imported" ]; then
+                      gapi /v2/CreateKey -X POST -H 'Content-Type: application/json' -d "{\"name\":\"$1\"}"
+                      [ "$CODE" = 200 ] || fail "creating key $1 failed (HTTP $CODE): $BODY"
+                      echo "Created key $1"
+                    fi
+                    gapi "/v2/GetKeyInfo?search=$1&showSecretKey=true"
+                    [ "$CODE" = 200 ] || fail "reading key $1 failed (HTTP $CODE): $BODY"
+                    ;;
+                  *) fail "looking up key $1 failed (HTTP $CODE): $BODY" ;;
+                esac
+                KEY_ID=$(json_str "$BODY" accessKeyId)
+                KEY_SECRET=$(json_str "$BODY" secretAccessKey)
+                [ -n "$KEY_ID" ] && [ -n "$KEY_SECRET" ] || fail "no credentials returned for key $1"
+              }
+
+              # allow <key name> <bucket> <read> <write> <owner>
+              allow() {
+                gapi "/v2/GetBucketInfo?globalAlias=$2"
+                [ "$CODE" = 200 ] || fail "bucket $2 not found (HTTP $CODE); create it first or list it in .Values.buckets"
+                bid=$(json_str "$BODY" id)
+                gapi /v2/AllowBucketKey -X POST -H 'Content-Type: application/json' \
+                  -d "{\"bucketId\":\"$bid\",\"accessKeyId\":\"$KEY_ID\",\"permissions\":{\"read\":$3,\"write\":$4,\"owner\":$5}}"
+                [ "$CODE" = 200 ] || fail "granting key $1 on bucket $2 failed (HTTP $CODE): $BODY"
+                echo "Key $1: read=$3 write=$4 owner=$5 on bucket $2"
+              }
+
+              # write_secret <ns> <name> <id key> <secret key> <region key or empty>
+              write_secret() {
+                data="\"$3\":\"$(b64 "$KEY_ID")\",\"$4\":\"$(b64 "$KEY_SECRET")\""
+                [ -z "$5" ] || data="$data,\"$5\":\"$(b64 "$S3_REGION")\""
+                kapi "/api/v1/namespaces/$1/secrets/$2?fieldManager=garage-provisioning&force=true" \
+                  -X PATCH -H 'Content-Type: application/apply-patch+yaml' \
+                  -d "{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"name\":\"$2\",\"namespace\":\"$1\"},\"type\":\"Opaque\",\"data\":{$data}}"
+                [ "$CODE" = 200 ] || [ "$CODE" = 201 ] || fail "writing Secret $1/$2 failed (HTTP $CODE): $BODY"
+                echo "Wrote credentials to Secret $1/$2"
+              }
+
+              until curl -fsS -o /dev/null "$ADMIN_URL/health"; do
+                echo "Waiting for Garage at $ADMIN_URL to be healthy..."
+                sleep 3
+              done
+
+              for b in $BUCKETS; do
+                gapi "/v2/GetBucketInfo?globalAlias=$b"
+                case "$CODE" in
+                  200) echo "Bucket $b already exists" ;;
+                  404)
+                    gapi /v2/CreateBucket -X POST -H 'Content-Type: application/json' -d "{\"globalAlias\":\"$b\"}"
+                    [ "$CODE" = 200 ] || fail "creating bucket $b failed (HTTP $CODE): $BODY"
+                    echo "Created bucket $b"
+                    ;;
+                  *) fail "looking up bucket $b failed (HTTP $CODE): $BODY" ;;
+                esac
+              done
+              {{- range .Values.keys }}
+              {{- $keyName := .name }}
+              {{- $s := .secret | default dict }}
+              {{- $ns := $s.namespace | default $.Release.Namespace }}
+              {{- $idKey := $s.accessKeyIdKey | default "ACCESS_KEY_ID" }}
+              {{- $secretKey := $s.secretAccessKeyKey | default "ACCESS_SECRET_KEY" }}
+
+              ensure_key {{ $keyName | squote }} {{ $ns | squote }} {{ $s.name | default "" | squote }} {{ $idKey | squote }} {{ $secretKey | squote }}
+              {{- range .buckets }}
+              allow {{ $keyName | squote }} {{ .name | squote }} {{ .read | default false }} {{ .write | default false }} {{ .owner | default false }}
+              {{- end }}
+              {{- if $s.name }}
+              write_secret {{ $ns | squote }} {{ $s.name | squote }} {{ $idKey | squote }} {{ $secretKey | squote }} {{ $s.regionKey | default "" | squote }}
+              {{- end }}
+              {{- end }}
+              echo "Provisioning done"
+

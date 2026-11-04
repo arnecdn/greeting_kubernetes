@@ -1,0 +1,55 @@
+{{- $fullname := include "garage-chart.provisionerName" . }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "garage-chart.labels" . | nindent 4 }}
+{{- $namespaces := include "garage-chart.secretNamespaces" . }}
+{{- if $namespaces }}
+{{- range $ns := splitList " " $namespaces }}
+{{- $names := list }}
+{{- range $.Values.keys }}
+{{- if and .secret .secret.name (eq (.secret.namespace | default $.Release.Namespace) $ns) }}
+{{- $names = append $names .secret.name }}
+{{- end }}
+{{- end }}
+---
+# Lets the provisioning Job write Garage key credentials into namespace {{ $ns }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $fullname }}-secrets
+  namespace: {{ $ns }}
+  labels:
+    {{- include "garage-chart.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      {{- toYaml (uniq $names) | nindent 6 }}
+    verbs: ["get", "patch"]
+  # "create" cannot be restricted by resourceNames; needed when the Secret does not exist yet
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $fullname }}-secrets
+  namespace: {{ $ns }}
+  labels:
+    {{- include "garage-chart.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $fullname }}-secrets
+subjects:
+  - kind: ServiceAccount
+    name: {{ $fullname }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}
+

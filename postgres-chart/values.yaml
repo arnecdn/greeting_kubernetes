@@ -5,7 +5,7 @@
 cluster:
   name: postgres-greeting
   namespace: cnpg-system
-  instances: 2  # 1 primary + 1 read replica
+  instances: 2  # 2 replicas on a single Minikube node
   enableSuperuserAccess: true  # Allows connecting as postgres superuser (useful for port-forward debugging)
 
   # Storage configuration
@@ -97,38 +97,37 @@ imageCatalog:
   images:
     - major: 17
       repository: docker.io/arnecdn/greeting-postgres
-      tag: "0.31"
-
-# MinIO configuration
-minio:
-  # MinIO root credentials (must match the Helm install of greeting-minio)
-  rootUser: rootuser
-  rootPassword: rootpass123
-  endpoint: http://greeting-minio.cnpg-system.svc.cluster.local:9000
-  bucketName: barman-cloud-greeting-backup
-
-# Backup configuration
+      tag: "0.1"
+# Backup to Garage
 backup:
   enabled: true
   schedule: "0 0 2 * * *"  # Daily at 2 AM (6-field cron: sec min hour dom mon dow)
-  objectStoreName: minio-backup-store
+  objectStoreName: garage-backup-store
   retentionPolicy: 1d
   destinationPath: "s3://barman-cloud-greeting-backup"
-  endpointURL: http://greeting-minio.cnpg-system.svc.cluster.local:9000
-  s3SecretName: minio-credentials
+  endpointURL: http://garage.garage.svc.cluster.local:3900
+  # Secret written by the Job in greeting_kubernetes/garage-chart (do not create it by hand)
+  s3SecretName: garage-credentials
   s3AccessKeyIdKey: ACCESS_KEY_ID
   s3AccessSecretKeyKey: ACCESS_SECRET_KEY
-  # Deterministic MinIO service-account credentials used by setup hook.
-  s3ServiceAccount:
-    accessKey: barmanbackup
-    secretKey: barmanbackupsecret1234567890
+  # Key in s3SecretName holding the S3 region; leave empty to use the client default (us-east-1)
+  s3RegionKey: REGION
   walCompression: gzip
   walMaxParallel: 2
-  # Keep disabled when using hook-generated MinIO service-account credentials.
-  staticCredentialsSecret:
-    enabled: false
-    accessKeyId: ""
-    secretAccessKey: ""
+
+# Backup configuration for MinIO / S3-compatible object storage
+#backup:
+#  enabled: true
+#  schedule: "0 0 2 * * *"  # Daily at 2 AM (6-field cron: sec min hour dom mon dow)
+#  objectStoreName: minio-backup-store
+#  retentionPolicy: 1d
+#  destinationPath: "s3://postgres-bucket"
+#  endpointURL: http://minio.minio.svc.cluster.local:9000
+#  s3SecretName: minio-credentials
+#  s3AccessKeyIdKey: accesskey
+#  s3AccessSecretKeyKey: secretkey
+#  walCompression: gzip
+#  walMaxParallel: 2
 
 # Monitoring and observability
 monitoring:
@@ -150,7 +149,7 @@ resources:
 labels: {}
 annotations: {}
 
-# Node selector and tolerations (optional)f
+# Node selector and tolerations (optional)
 nodeSelector: {}
 tolerations: []
-affinity: {}
+

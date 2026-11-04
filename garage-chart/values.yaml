@@ -1,0 +1,93 @@
+# Garage for the greeting app on Minikube.
+#
+#   helm upgrade --install garage ./garage-chart -n garage --create-namespace --wait
+#
+# Values under `garage:` are passed to the vendored upstream chart (charts/garage, see its values.yaml).
+# Everything else is used by this wrapper.
+
+# Secret holding the Garage admin API token. Generated on first install and kept on upgrades.
+# The same name must be used in garage.environment below.
+adminTokenSecret:
+  name: garage-admin-token
+  key: adminToken
+
+# -- Buckets (global aliases) to create if missing
+buckets:
+  - barman-cloud-greeting-backup
+
+# -- Access keys to provision. For each key the post-install/upgrade Job:
+#  1. reuses the Garage key with this name if it exists,
+#  2. otherwise imports the credentials already stored in `secret` (keeps them stable if Garage is reinstalled),
+#  3. otherwise creates a new key;
+# then grants the bucket permissions and, if `secret.name` is set, writes the credentials into that Secret.
+# Key names must be URL-safe. The target namespace must exist.
+keys:
+  - name: barman-greeting
+    buckets:
+      - name: barman-cloud-greeting-backup
+        read: true
+        write: true
+        owner: false
+    secret:
+      name: garage-credentials
+      namespace: cnpg-system                 # default: release namespace
+      accessKeyIdKey: ACCESS_KEY_ID          # default: ACCESS_KEY_ID
+      secretAccessKeyKey: ACCESS_SECRET_KEY  # default: ACCESS_SECRET_KEY
+      regionKey: REGION                      # optional, stores garage.garage.s3.api.region
+
+job:
+  image:
+    repository: curlimages/curl
+    tag: "8.11.1"
+    pullPolicy: IfNotPresent
+  # -- Give up if Garage is not healthy / provisioning does not finish within this time
+  activeDeadlineSeconds: 600
+  backoffLimit: 3
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  resources: {}
+
+# ---- Upstream Garage chart values ----
+garage:
+  garage:
+    # One replica, replication_factor = 1, automatic layout
+    singleNode: true
+    s3:
+      api:
+        # S3 region; clients (e.g. Barman) must sign requests for this region
+        region: garage
+
+  image:
+    # The upstream default (dxflrs/amd64_garage) runs under emulation on arm64 nodes,
+    # where LMDB fails with "Function not implemented (os error 38)".
+    # dxflrs/garage is the multi-arch image.
+    repository: dxflrs/garage
+
+  # Minikube's default "standard" storage class (k8s.io/minikube-hostpath) only provisions
+  # writable directories on the control-plane node. Pin Garage there.
+  nodeSelector:
+    kubernetes.io/hostname: minikube
+
+  service:
+    admin:
+      # Admin API service, used by the provisioning Job
+      enabled: true
+
+  # Enables the admin API with the token from adminTokenSecret
+  environment:
+    - name: GARAGE_ADMIN_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: garage-admin-token
+          key: adminToken
+

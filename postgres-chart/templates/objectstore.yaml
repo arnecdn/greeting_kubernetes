@@ -1,0 +1,27 @@
+{{- if .Values.backup.enabled }}
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: {{ .Values.backup.objectStoreName }}
+  namespace: {{ .Values.cluster.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "postgres-chart.labels" . | nindent 4 }}
+spec:
+  retentionPolicy: {{ .Values.backup.retentionPolicy | quote }}
+  configuration:
+    destinationPath: {{ .Values.backup.destinationPath | quote }}
+    endpointURL: {{ .Values.backup.endpointURL | quote }}
+    s3Credentials:
+      accessKeyId:
+        name: {{ .Values.backup.s3SecretName }}
+        key: {{ .Values.backup.s3AccessKeyIdKey }}
+      secretAccessKey:
+        name: {{ .Values.backup.s3SecretName }}
+        key: {{ .Values.backup.s3AccessSecretKeyKey }}
+      {{- with .Values.backup.s3RegionKey }}
+      # Garage only accepts request signatures for its own region (garage.s3.api.region)
+      region:
+        name: {{ $.Values.backup.s3SecretName }}
+        key: {{ . }}
+      {{- end }}
+{{- end }}
