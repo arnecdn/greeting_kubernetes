@@ -101,7 +101,7 @@ imageCatalog:
 # Backup to Garage
 backup:
   enabled: true
-  schedule: "0 0 2 * * *"  # Daily at 2 AM (6-field cron: sec min hour dom mon dow)
+  schedule: "0 20 10 * * *"  # Daily at 2 AM (6-field cron: sec min hour dom mon dow)
   objectStoreName: garage-backup-store
   retentionPolicy: 1d
   destinationPath: "s3://barman-cloud-greeting-backup"

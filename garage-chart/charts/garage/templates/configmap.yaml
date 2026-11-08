@@ -38,10 +38,12 @@ data:
     {{ .Values.garage.additionalTopLevelConfig | nindent 4 }}
     {{- end }}
   
+    {{- if not .Values.garage.kubernetesSkipCrd }}
     [kubernetes_discovery]
     namespace = "{{ .Release.Namespace }}"
     service_name = "{{ include "garage.fullname" . }}"
     skip_crd = {{ .Values.garage.kubernetesSkipCrd }}
+    {{- end }}
 
     [s3_api]
     s3_region = "{{ .Values.garage.s3.api.region }}"

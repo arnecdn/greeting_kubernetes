@@ -62,6 +62,11 @@ garage:
   garage:
     # One replica, replication_factor = 1, automatic layout
     singleNode: true
+    # In a single-node Minikube install there is no Garage CRD installed by this chart,
+    # so discovery must skip creating/using the Kubernetes node CRD.
+    # If you later deploy a multi-node Garage cluster, install the upstream CRD and
+    # remove this override so kubernetes discovery can publish nodes normally.
+    kubernetesSkipCrd: true
     s3:
       api:
         # S3 region; clients (e.g. Barman) must sign requests for this region
