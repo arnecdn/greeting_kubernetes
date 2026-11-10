@@ -21,11 +21,11 @@ helm repo add cnpg https://cloudnative-pg.github.io/charts
 helm repo update
 
 
-helm install kafka-chart ./kafka-chart --namespace default
-helm install keda kedacore/keda --namespace default
+helm install kafka-chart ./kafka-chart --namespace kafka --create-namespace
+helm install keda kedacore/keda --namespace kafka --create-namespace
 
 
-helm upgrade --install cnpg --namespace cnpg-system --create-namespace --set config.clusterWide=false --version 0.27.0 cnpg/cloudnative-pg
+helm upgrade --install cnpg --namespace cnpg-system --create-namespace --set config.clusterWide=true --version 0.27.0 cnpg/cloudnative-pg
 
 helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
 kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=120s
@@ -35,8 +35,8 @@ helm upgrade --install plugin-barman-cloud cnpg/plugin-barman-cloud --namespace 
 # Requires the cnpg-system namespace (created by the cnpg install above)
 helm upgrade --install garage ./garage-chart -n garage --create-namespace --wait
 
-make -C postgres-chart/images
-helm upgrade --install postgres-greeting ./postgres-chart -n cnpg-system --create-namespace
+make -C postgres-chart/image
+helm upgrade --install postgres-greeting ./postgres-chart -n default
 
 kubectl create namespace meta-monitoring
 kubectl create secret generic minio -n meta-monitoring --from-literal=rootUser=minio123 --from-literal=rootPassword=minio123
@@ -52,11 +52,11 @@ The chart is located in the `kafka-chart` directory.
 ### Installation
 In order to install the local Kafka node in KRaft mode, use the local installation config.
 ``` 
-helm install kafka-chart ./kafka-chart --namespace default
+helm install kafka-chart ./kafka-chart --namespace kafka --create-namespace
 
-helm upgrade kafka-chart ./kafka-chart --namespace default
+helm upgrade kafka-chart ./kafka-chart --namespace kafka --create-namespace
 
-helm uninstall kafka-chart --namespace default
+helm uninstall kafka-chart ---namespace kafka --create-namespace
 
 ```
 
@@ -75,7 +75,7 @@ Setting namespace=default because of some unsolved problem with accessing Kafka 
 There is no configuration, except for the ScaledObject installed when deploying the app greeting-processor-rust POD
 ```
 helm repo add kedacore https://kedacore.github.io/charts
-helm install keda kedacore/keda --namespace default
+helm install keda kedacore/keda --namespace kafka --create-namespace
 ```
 
 
@@ -183,6 +183,7 @@ kubectl -n garage exec garage-0 -c garage -- /garage status
 kubectl -n garage exec garage-0 -c garage -- /garage bucket list
 kubectl -n garage exec garage-0 -c garage -- /garage key info barman-greeting
 kubectl -n cnpg-system get secret garage-credentials
+
 ```
 
 ### Update the vendored Garage chart

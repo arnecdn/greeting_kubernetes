@@ -20,5 +20,5 @@ statefulset:
   kafkaListeners: "CONTROLLER://:29092,PLAINTEXT://:9092,PLAINTEXT_HOST://:9093"
   kafkaAdvertisedListeners: "PLAINTEXT://localhost:9092,PLAINTEXT_HOST://kafka-service:9093"
   kafkaOffsetsReplicationFactor: 1
-  kafkaControllerQuorumVoters: "0@kafka-0.kafka-service.default.svc.cluster.local:29092"
+  kafkaControllerQuorumVoters: "0@kafka-0.kafka-service.kafka.svc.cluster.local:29092"
 

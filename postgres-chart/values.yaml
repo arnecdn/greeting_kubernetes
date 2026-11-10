@@ -4,7 +4,8 @@
 # Cluster configuration
 cluster:
   name: postgres-greeting
-  namespace: cnpg-system
+  # Leave empty to use the Helm release namespace (for example: default or cnpg-system)
+  namespace: default
   instances: 2  # 2 replicas on a single Minikube node
   enableSuperuserAccess: true  # Allows connecting as postgres superuser (useful for port-forward debugging)
 
@@ -152,4 +153,3 @@ annotations: {}
 # Node selector and tolerations (optional)
 nodeSelector: {}
 tolerations: []
-
